@@ -1,0 +1,66 @@
+## 2025
+
+event_urls = [
+    "https://www.hltv.org/events/7903/blast-bounty-2025-season-1",
+    "https://www.hltv.org/events/8034/iem-katowice-2025",
+    "https://www.hltv.org/events/8043/pgl-cluj-napoca-2025",
+    "https://www.hltv.org/events/8292/esl-pro-league-season-21",
+    "https://www.hltv.org/events/7904/blast-open-lisbon-2025",
+    "https://www.hltv.org/events/8044/pgl-bucharest-2025",
+    "https://www.hltv.org/events/8036/iem-melbourne-2025",
+    "https://www.hltv.org/events/7905/blast-rivals-2025-season-1",
+    "https://www.hltv.org/events/8045/pgl-astana-2025",
+    "https://www.hltv.org/events/8037/iem-dallas-2025",
+    "https://www.hltv.org/events/7902/blasttv-austin-major-2025",
+    "https://www.hltv.org/events/8063/fissure-playground-1",
+    "https://www.hltv.org/events/8038/iem-cologne-2025",
+    "https://www.hltv.org/events/7906/blast-bounty-2025-season-2",
+    "https://www.hltv.org/events/8039/esports-world-cup-2025",
+    "https://www.hltv.org/events/7907/blast-open-london-2025",
+    "https://www.hltv.org/events/8064/fissure-playground-2",
+    "https://www.hltv.org/events/8040/esl-pro-league-season-22",
+    "https://www.hltv.org/events/8027/cs-asia-championships-2025",
+    "https://www.hltv.org/events/8067/thunderpick-world-championship-2025",
+    "https://www.hltv.org/events/8046/pgl-masters-bucharest-2025",
+    "https://www.hltv.org/events/8041/iem-chengdu-2025",
+    "https://www.hltv.org/events/7908/blast-rivals-2025-season-2",
+]
+
+eventfilter = [
+    "&event=7909&event=7903",  "&event=8034", "&event=8043",
+    "&event=8292", "&event=7904", "&event=8044", "&event=8036",
+    "&event=7905", "&event=8045", "&event=8037",
+    "&event=7902","&event=8063","&event=8038","&event=7910&event=7906",
+    "&event=8039","&event=7912&event=7907","&event=8064","&event=8040",
+    "&event=8027","&event=8067","&event=8046","&event=8041","&event=7908"
+]
+## 2024
+
+
+event_urls = [
+    "https://www.hltv.org/events/7435/iem-katowice-2024",
+    "https://www.hltv.org/events/7148/pgl-cs2-major-copenhagen-2024",
+    "https://www.hltv.org/events/7437/iem-chengdu-2024",
+    "https://www.hltv.org/events/7440/esl-pro-league-season-19",
+    "https://www.hltv.org/events/7755/betboom-dacha-belgrade-2024",
+    "https://www.hltv.org/events/7438/iem-dallas-2024",
+    "https://www.hltv.org/events/7475/yalla-compass-2024",
+    "https://www.hltv.org/events/7485/blast-premier-spring-final-2024",
+    "https://www.hltv.org/events/7732/esports-world-cup-2024",
+    "https://www.hltv.org/events/7436/iem-cologne-2024",
+    "https://www.hltv.org/events/7993/betboom-dacha-belgrade-season-2",
+    "https://www.hltv.org/events/7441/esl-pro-league-season-20",
+    "https://www.hltv.org/events/7556/blast-premier-fall-final-2024",
+    "https://www.hltv.org/events/7439/iem-rio-2024",
+    "https://www.hltv.org/events/7557/blast-premier-world-final-2024",
+    "https://www.hltv.org/events/7524/perfect-world-shanghai-major-2024",
+
+]
+
+eventfilter = [
+    "&event=7435",  "&event=7148", "&event=7437",
+    "&event=7440", "&event=7755", "&event=7438", "&event=7475",
+    "&event=7485", "&event=7732", "&event=7436",
+    "&event=7993","&event=7441","&event=7556","&event=7439",
+    "&event=7557","&event=7524",
+]
