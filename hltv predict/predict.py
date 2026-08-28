@@ -28,19 +28,20 @@ MAX_SLEEP = 0.5
 
 # ===========================================
 
-def get_driver():
+def get_driver(chrome_version=None):
     """初始化浏览器 - 极速模式"""
     options = uc.ChromeOptions()
     options.add_argument("--no-first-run")
     options.add_argument("--start-maximized")
-    
+
     # 禁用图片，极大提升加载速度
-    options.add_argument('--blink-settings=imagesEnabled=false') 
-    
+    options.add_argument('--blink-settings=imagesEnabled=false')
+
     # Eager 模式：DOM 加载完（文字出来）就视为加载成功，不等待后续资源
-    options.page_load_strategy = 'eager' 
-    
-    driver = uc.Chrome(options=options)
+    options.page_load_strategy = 'eager'
+
+    # chrome_version: Chrome 主版本号 (None = 自动检测; 本机 Chrome 151 需传 151)
+    driver = uc.Chrome(options=options, version_main=chrome_version)
     return driver
 
 def random_sleep():
@@ -70,20 +71,21 @@ def load_dataset_to_set(filepath, key_field):
 
 # ================= 阶段一：全量名录补全 =================
 
-def run_phase_1(driver):
+def run_phase_1(driver, listing_api_base=LISTING_API_BASE, user_list_file=USER_LIST_FILE, start_offset=25520):
     print("\n>>> [Phase 1] 启动：全量名录补全")
     print(">>> 目标：扫描 API，确保每一个在榜用户都存储在 User List 中")
 
     # 1. 加载本地已保存的 User ID (用于判断是否需要写入)
     # 注意：我们使用 userId 作为唯一标识，比用户名更靠谱
-    stored_ids = load_dataset_to_set(USER_LIST_FILE, 'userId')
+    stored_ids = load_dataset_to_set(user_list_file, 'userId')
     print(f"    当前名录已有: {len(stored_ids)} 人")
 
-    current_offset = 25520 # 始终从 0 开始扫，确保不漏人
-    
+    # start_offset: 起始 offset (原值 25520; 从 0 开始可全量补录)
+    current_offset = start_offset
+
     while True:
-        connector = "&" if "?" in LISTING_API_BASE else "?"
-        api_url = f"{LISTING_API_BASE}{connector}offset={current_offset}"
+        connector = "&" if "?" in listing_api_base else "?"
+        api_url = f"{listing_api_base}{connector}offset={current_offset}"
         
         try:
             driver.get(api_url)
@@ -126,7 +128,7 @@ def run_phase_1(driver):
                     "found_at": time.time()
                 }
                 
-                append_line(USER_LIST_FILE, simple_user)
+                append_line(user_list_file, simple_user)
                 stored_ids.add(uid) # 更新内存，防止本轮重复
                 added_count += 1
             
@@ -177,31 +179,31 @@ def parse_detail_html(html_source, user_obj):
         }
     except: return None
 
-def run_phase_2(driver):
+def run_phase_2(driver, user_list_file=USER_LIST_FILE, final_output_file=FINAL_OUTPUT_FILE, hltv_domain=HLTV_DOMAIN):
     print("\n>>> [Phase 2] 启动：详情抓取")
-    
-    if not os.path.exists(USER_LIST_FILE):
+
+    if not os.path.exists(user_list_file):
         print("    错误：未找到用户列表文件，请先运行 Phase 1。")
         return
 
     # 1. 读取任务列表
     pending_tasks = []
-    with open(USER_LIST_FILE, 'r', encoding='utf-8') as f:
+    with open(user_list_file, 'r', encoding='utf-8') as f:
         for line in f:
             try: pending_tasks.append(json.loads(line))
             except: pass
-            
+
     # 2. 读取已完成列表 (去重)
     # 使用 predictor_user 或 predictor_id 去重均可，这里用用户名
-    completed_users = load_dataset_to_set(FINAL_OUTPUT_FILE, 'predictor_user')
-    
+    completed_users = load_dataset_to_set(final_output_file, 'predictor_user')
+
     # 3. 过滤出真正需要抓取的
     real_tasks = [u for u in pending_tasks if u['username'] not in completed_users]
-    
+
     print(f"    列表总数: {len(pending_tasks)}")
     print(f"    已完成数: {len(completed_users)}")
     print(f"    待抓取数: {len(real_tasks)}")
-    
+
     if not real_tasks:
         print("    所有任务已完成！")
         return
@@ -210,21 +212,21 @@ def run_phase_2(driver):
     for i, user in enumerate(real_tasks):
         link = user.get('link')
         if not link: continue
-        
-        full_url = HLTV_DOMAIN + link
-        
+
+        full_url = hltv_domain + link
+
         try:
             driver.get(full_url)
             random_sleep() # 0.2-0.5s
-            
+
             result = parse_detail_html(driver.page_source, user)
-            
+
             progress = f"[{i+1}/{len(real_tasks)}]"
-            
+
             if result:
                 count = len(result['predictions'])
                 print(f"    {progress} {user['username']} ({count} preds)")
-                append_line(FINAL_OUTPUT_FILE, result)
+                append_line(final_output_file, result)
             else:
                 # 即使失败也打印
                 print(f"    {progress} [Fail] {user['username']} (无数据/解析败)")
@@ -241,21 +243,38 @@ def run_phase_2(driver):
 
 # ================= 主程序 =================
 
-def main():
-    driver = get_driver()
+def main(
+    chrome_version=None,
+    run_phase_1=RUN_PHASE_1,
+    run_phase_2=RUN_PHASE_2,
+    user_list_file=USER_LIST_FILE,
+    final_output_file=FINAL_OUTPUT_FILE,
+    listing_api_base=LISTING_API_BASE,
+    start_offset=25520,
+):
+    """Top20 预测爬虫主入口: Phase 1 补全用户列表, Phase 2 抓取用户详情.
+
+    参数均可传入覆盖 (默认值 = 脚本内硬编码配置, 行为不变):
+      chrome_version      Chrome 主版本号 (None = 自动检测; 本机 Chrome 151 需传 151)
+      run_phase_1 / run_phase_2  阶段开关
+      user_list_file / final_output_file  中间与最终输出文件路径
+      listing_api_base    Top20 榜单 API URL
+      start_offset        Phase 1 起始 offset (原值 25520; 从 0 开始可全量补录)
+    """
+    driver = get_driver(chrome_version=chrome_version)
     try:
         # 首次访问，通过 Cloudflare 检查
         # 这一步不能太快，必须给足时间让 CF 验证通过
         driver.get(HLTV_DOMAIN)
         print("正在进行首次握手 (Cloudflare)... 等待 4 秒")
         time.sleep(4)
-        
-        if RUN_PHASE_1:
-            run_phase_1(driver)
-            
-        if RUN_PHASE_2:
-            run_phase_2(driver)
-            
+
+        if run_phase_1:
+            run_phase_1(driver, listing_api_base=listing_api_base, user_list_file=user_list_file, start_offset=start_offset)
+
+        if run_phase_2:
+            run_phase_2(driver, user_list_file=user_list_file, final_output_file=final_output_file)
+
     except KeyboardInterrupt:
         print("\n用户手动停止脚本。")
     finally:
