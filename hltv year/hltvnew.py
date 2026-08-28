@@ -1,38 +1,54 @@
 import re 
 import os 
-from openpyxl import Workbook
-from openpyxl import load_workbook
-import undetected_chromedriver as uc
+import sys
+import ssl
 import time
+
+VENDOR_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".vendor")
+if os.path.isdir(VENDOR_DIR) and VENDOR_DIR not in sys.path:
+    sys.path.insert(0, VENDOR_DIR)
+
+ssl._create_default_https_context = ssl._create_unverified_context
+
+try:
+    from openpyxl import Workbook
+    from openpyxl import load_workbook
+except ImportError as exc:
+    raise ImportError("Missing dependency: openpyxl. Install with: pip install -r requirements.txt") from exc
+
+try:
+    import undetected_chromedriver as uc
+except ImportError as exc:
+    raise ImportError("Missing dependency: undetected-chromedriver. Install with: pip install -r requirements.txt") from exc
 
 
 
 webfront="https://www.hltv.org/stats/players"
 
-eventfilter="?event=8876&event=8246&event=8575&event=8240"
-
-eliteeventfilter = "?&event=8240"  
-supereliteeventfilter = "?&event=8240"
-arenafilter="?&event=8240&playoffMatchType=PLAYOFFS"
-keyword = ">" 
+eventfilter="?event=8876&event=8246&event=8575&event=8240&event=8047&event=8241&event=8412&event=8413&event=8248&event=8048&event=8242&event=8250&event=8049&event=8243&event=8263&event=9028&event=9029&event=8301&event=8914"
+bigeventfilter = "?&event=8246&event=8575&event=8240&event=8047&event=8413&event=8248&event=8242&event=8250&event=8049&event=8243&event=8301"
+eliteeventfilter = "?&event=8240&event=8876&event=8047&event=8248&event=8301&matchType=Lan"  
+supereliteeventfilter = "?&event=8240&event=8876&event=8301&matchType=Lan"
+arenafilter="?&event=8240&event=8876&event=8047&event=8413&event=8248&event=8242&event=8250&event=8049&event=8243&event=8301&playoffMatchType=PLAYOFFS&matchType=Lan"
+keyword = ">"   
 eliteeventplayofffilter = eliteeventfilter+"&playoffMatchType=PLAYOFFS"
 supereliteeventplayofffilter= supereliteeventfilter+"&playoffMatchType=PLAYOFFS"
-bigeventplayofffilter=eventfilter+"&matchType=BigEvents&playoffMatchType=PLAYOFFS"
-bigeventfinalfilter=eventfilter+"&matchType=BigEvents&playoffMatchType=GRAND_FINAL"
+bigeventplayofffilter=bigeventfilter+"&playoffMatchType=PLAYOFFS"
+bigeventfinalfilter=bigeventfilter+"&playoffMatchType=GRAND_FINAL"
 
-minMapCountfilter="&minMapCount=100" # 图池数筛选器，更改数字使用
-minrating = 0 #大于此数的选手rating纳入统计
+minMapCountfilter="&minMapCount=65" # 图池数筛选器，更改数字使用
+minrating = 1.04 #大于此数的选手rating纳入统计
 file_path = os.path.join("C:\\Users\\10725\\Desktop\\hltv\\hltv year", "rating2026.xlsx") #表格文件保存路径，根据需要更改
 
 wb = Workbook()
 ws = wb.active
-driver = uc.Chrome()
+driver = uc.Chrome(version_main=149)
 #用于填写表格的第一行
 description = ["选手ID","图池数","rating","rounds","CTrating","Trating","首杀尝试","首杀成功","首杀rating","手枪局rating","DPR","KAST","RS","ADR","KPR","DPR_eco","KAST_eco","MULTIKILL_eco","ADR_eco","KPR_eco","KD diff","map vs top5","rating vs top5","map vs top10","rating vs top10","map vs top20","rating vs top20","回合首杀数","Rounds with a kill","ROunds with a multikill","3+kill","0.85+","1.00+","1.15+","1.30+","1.45+","clutch win","clutch point per round","big event map","big event rating","elite event map","elite event rating","superelite event map","supereliteevent rating","big event playoff map","big event playoff rating","elite event playoff map","elite event playoff rating","superelite event playoff map","superelite event playoff rating","kill per round win","adr win","win after first kill","save per round lose","assist kill percentage","damage per kill","last alive percentage","kpr lose","adr lose","traded_kill","traded_death_percentage","flash_assist","utility_damage","firepower","entrying","trading","opening","clutching","sniping","utility","HS%","singlemapwinrating","traded_death","save_teammate","saved_by_teammate","support_round_percent","attack_in_round","winrate_1v1","livetime_perround","snipkill_perround","snipkill_percent","snipkillround_percent","utlility_kill_round","throw_flash_perround","time_opponent_flashed","traded_death_percentage","assist_per_round","arena map","arena rating","big event final map","big event final rating","avg_weaponvalve_perkill"]
 # 模块化
 def multi_event_scraper(s):
     driver.get(s)
-    time.sleep(0.6657)
+    time.sleep(0.6657)              
     content = driver.page_source
     namee = re.findall('data-tooltip-id="uniqueTooltipId-(.*?)</a></td>',content)
     mapp = re.findall('</span></td>\n                    <td class="statsDetail">(.*?)</td>',content)
@@ -152,7 +168,7 @@ for i in ok:
     count+=1
 
 #赛事扫描
-Bigeventname,Bigeventmap,Bigeventrating = multi_event_scraper(webfront+eventfilter+"&matchType=BigEvents"+"&minMapCount=0")
+Bigeventname,Bigeventmap,Bigeventrating = multi_event_scraper(webfront+bigeventfilter+"&minMapCount=0")
 Arenaeventname,Arenaeventmap,Arenaeventrating = multi_event_scraper(webfront+arenafilter+"&minMapCount=0")
 Supereliteeventname,Supereliteeventmap,Supereliteeventrating = multi_event_scraper(webfront+supereliteeventfilter+"&minMapCount=0")
 Eliteeventname,Eliteeventmap,Eliteeventrating = multi_event_scraper(webfront+eliteeventfilter+"&minMapCount=0")
@@ -285,7 +301,7 @@ for name,mapcount,rating,id,rounds in zip(Name,Mapcount,Rating,Id,Rounds):
     saved_by_teammate = chartstat[24]
 
     livetime_perround_str = chartstat[84]
-    livetime = re.findall("\d+\.?\d*",livetime_perround_str)
+    livetime = re.findall(r"\d+\.?\d*",livetime_perround_str)
     livetime_perround = float(livetime[0])*60.0+float(livetime[1])
 
     #统计选手对阵top5数据

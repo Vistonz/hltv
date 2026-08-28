@@ -5,13 +5,13 @@ import undetected_chromedriver as uc
 import time
 wb = Workbook()
 ws = wb.active
-driver = uc.Chrome() # 打开网页 
+driver = uc.Chrome(version_main=149) # 打开网页 
 """
 以下为初始数据区，需要定时更改
 """
 webfront="https://www.hltv.org/stats/players"#默认头，无需更改
 #赛事筛选，在hltv筛选器中筛选后复制？之后的文字
-eventfilter="?&event=8042&playoffMatchType=PLAYOFFS"
+eventfilter="?event=8914"
 keyword = ">" #用于清除rating和name之前的一些多余字符
 stagedate = []
 stagedate.append([16,5,19,5,2,9999])

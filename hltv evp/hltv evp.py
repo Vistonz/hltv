@@ -16,39 +16,23 @@ from selenium.webdriver.common.by import By
 
 # !! 必须与 Step 1 (爬虫) 脚本中的列表保持一致 !!
 event_urls = [
-    "https://www.hltv.org/events/7903/blast-bounty-2025-season-1",
-    "https://www.hltv.org/events/8034/iem-katowice-2025",
-    "https://www.hltv.org/events/8043/pgl-cluj-napoca-2025",
-    "https://www.hltv.org/events/8292/esl-pro-league-season-21",
-    "https://www.hltv.org/events/7904/blast-open-lisbon-2025",
-    "https://www.hltv.org/events/8044/pgl-bucharest-2025",
-    "https://www.hltv.org/events/8036/iem-melbourne-2025",
-    "https://www.hltv.org/events/7905/blast-rivals-2025-season-1",
-    "https://www.hltv.org/events/8045/pgl-astana-2025",
-    "https://www.hltv.org/events/8037/iem-dallas-2025",
-    "https://www.hltv.org/events/7902/blasttv-austin-major-2025",
-    "https://www.hltv.org/events/8063/fissure-playground-1",
-    "https://www.hltv.org/events/8038/iem-cologne-2025",
-    "https://www.hltv.org/events/7906/blast-bounty-2025-season-2",
-    "https://www.hltv.org/events/8039/esports-world-cup-2025",
-    "https://www.hltv.org/events/7907/blast-open-london-2025",
-    "https://www.hltv.org/events/8064/fissure-playground-2",
-    "https://www.hltv.org/events/8040/esl-pro-league-season-22",
-    "https://www.hltv.org/events/8027/cs-asia-championships-2025",
-    "https://www.hltv.org/events/8067/thunderpick-world-championship-2025",
-    "https://www.hltv.org/events/8046/pgl-masters-bucharest-2025",
-    "https://www.hltv.org/events/8041/iem-chengdu-2025",
-    "https://www.hltv.org/events/7908/blast-rivals-2025-season-2",
-    "https://www.hltv.org/events/8042/starladder-budapest-major-2025"
+    "https://www.hltv.org/events/8246/blast-bounty-2026-season-1-finals",
+    "https://www.hltv.org/events/8240/iem-krakw-2026",
+    "https://www.hltv.org/events/8047/pgl-cluj-napoca-2026",
+    "https://www.hltv.org/events/8412/EPL-S23",
+    "https://www.hltv.org/events/8248/blast-open-rotterdam-2026",
+    "https://www.hltv.org/events/8048/pgl-bucharest-2026",
+    "https://www.hltv.org/events/8242/iem-rio-2026",
+    "https://www.hltv.org/events/8250/blast-rivals-2026-season-1",
+    "https://www.hltv.org/events/8049/pgl-astana-2026",
+    "https://www.hltv.org/events/8243/iem-atlanta-2026",
+    "https://www.hltv.org/events/8263/cs-asia-championships-2026",
+    "https://www.hltv.org/events/8301/iem-cologne-major-2026"
 ]
 
 eventfilter = [
-    "&event=7909&event=7903",  "&event=8034", "&event=8043",
-    "&event=8292", "&event=7904", "&event=8044", "&event=8036",
-    "&event=7905", "&event=8045", "&event=8037",
-    "&event=7902","&event=8063","&event=8038","&event=7910&event=7906",
-    "&event=8039","&event=7912&event=7907","&event=8064","&event=8040",
-    "&event=8027","&event=8067","&event=8046","&event=8041","&event=7908","&event=8042"
+    "&event=8246",
+    "&event=8240","&event=8047","&event=8413","&event=8248","&event=8048","&event=8242","&event=8250","&event=8049","&event=8243","&event=8263","&event=8301"
 ]
 
 # (回合) 长度归一化参数 (幂)
@@ -63,8 +47,8 @@ UPPER_POWER = 1.2
 base_directory = "C:\\Users\\10725\\Desktop\\hltv\\database\\event"
 # 排名数据库路径
 rank_db_directory = "C:\\Users\\10725\\Desktop\\hltv\\database\\rank"
-# 赛事日期映射文件路径
-date_mapping_file = "C:\\Users\\10725\\Desktop\\hltv\\hltv evp\\副本2025年各赛事使用的HLTV排名日期.xlsx"
+# 赛事日期映射文件路径 (已提取到独立权重脚本中使用)
+# date_mapping_file = "C:\\Users\\10725\\Desktop\\hltv\\hltv evp\\副本2025年各赛事使用的HLTV排名日期.xlsx"
 
 # (文件路径)
 output_stats_file = os.path.join(base_directory, "global_stats.json")
@@ -89,38 +73,6 @@ BASE_WEIGHT_C = 0.5
 RANK_K =  6
 # (阶段定义)
 PLAYOFF_STAGES = ["Grand final", "Semi-final", "Quarter-final", "3rd place"]
-
-# [新增] 赛事ID与 Excel 表格名称的映射 (用于从 Sheet3 查找日期)
-EVENT_ID_TO_SHEET3_NAME = {
-    "7903": "BLAST赏金赛 S1-线上",
-    "8034": "IEM卡托维兹", 
-    "8043": "PGL克卢日—纳波卡",
-    "8292": "EPL  S21", 
-    "7904": "BLAST里斯本",
-    "8044": "PGL布加勒斯特",
-    "8036": "IEM 墨尔本",
-    "7905": "BLAST竞争赛 S1",
-    "8045": "PGL阿斯塔纳",
-    "8037": "IEM 达拉斯",
-    "7902": "奥斯汀Major",
-    "8063": "FPG 1",
-    "8038": "IEM 科隆",
-    "7906": "BLAST赏金赛 S2", 
-    "8039": "EWC",
-    "7907": "BLAST伦敦",
-    "8064": "FPG 2",
-    "8040": "EPL  S22",
-    "8027": "CAC",
-    "8067": "Thunderpick World",
-    "8046": "PGL布加勒斯特 S2",
-    "8041": "IEM 成都",
-    "7908": "BLAST竞争赛 S2",
-    "8042": "布达佩斯Major"
-}
-
-# [新增] 标准T1赛事总积分基准 (用于归一化赛事含金量)
-# 假设前8名队伍总分约为 5000分左右 (基于归一化后的1000分制)。
-STANDARD_TIER1_POINT_SUM = 5000.0
 
 
 # ----------------------------------------------------------------------
@@ -185,85 +137,6 @@ def calculate_performance_score(
     stage_adjusted_score = raw_score * stage_weight * rank_weight
     return stage_adjusted_score * base_score + 0.06 * stage_weight
 
-def load_event_date_map():
-    print(f"正在加载赛事日期映射: {date_mapping_file}")
-    try:
-        df_map = pd.read_excel(date_mapping_file, sheet_name=2, header=None)
-        
-        event_date_map = {}
-        for index, row in df_map.iterrows():
-            try:
-                name = str(row.iloc[1]).strip()
-                date_val = row.iloc[2]
-                date_str = ""
-                try:
-                    ts = pd.to_datetime(date_val)
-                    if not pd.isna(ts):
-                        date_str = ts.strftime('%Y-%m-%d')
-                    else:
-                        date_str = str(date_val).strip().split(' ')[0]
-                except:
-                    date_str = str(date_val).strip().split(' ')[0]
-
-                if name and date_str and date_str.lower() != 'nan' and 'hltv' not in date_str.lower():
-                    event_date_map[name] = date_str
-            except Exception:
-                continue
-                
-        print(f"已加载 {len(event_date_map)} 条赛事日期映射。")
-        return event_date_map
-    except Exception as e:
-        print(f"加载日期映射文件失败: {e}")
-        return {}
-
-# [修改] 加载特定日期的队伍积分 (包含积分归一化逻辑 & 数据类型修复)
-def load_team_points_for_date(date_str):
-    target_path_xlsx = os.path.join(rank_db_directory, f"{date_str}.xlsx")
-    target_path_csv = os.path.join(rank_db_directory, f"{date_str}.csv")
-    
-    df = pd.DataFrame()
-    if os.path.exists(target_path_xlsx):
-        print(f"正在加载排名文件: {target_path_xlsx}")
-        try: df = pd.read_excel(target_path_xlsx)
-        except: pass
-    elif os.path.exists(target_path_csv):
-        print(f"正在加载排名文件: {target_path_csv}")
-        try: df = pd.read_csv(target_path_csv)
-        except: pass
-    else:
-        print(f"警告: 未找到日期 {date_str} 的排名文件。")
-        return {}
-
-    df.columns = [c.strip() for c in df.columns]
-    
-    if 'Team Name' not in df.columns or 'Points' not in df.columns:
-        return {}
-    
-    # --- 修复核心：强制转换 Points 为数字 ---
-    df['Points'] = pd.to_numeric(df['Points'], errors='coerce')
-    df = df.dropna(subset=['Points']) # 删除无法转为数字的行
-    
-    # [新增] 积分归一化逻辑
-    try:
-        max_points = df['Points'].max()
-        if max_points > 0:
-            scale_factor = 1000.0 / max_points
-            print(f"  -> 此日期最高分为 {max_points}，归一化系数为 {scale_factor:.4f} (第一名将被视为1000分)")
-            # 增加所有队伍分数
-            df['Points'] = df['Points'] * scale_factor
-    except Exception as e:
-        print(f"  -> 积分归一化计算失败: {e}")
-
-    points_map = {}
-    for _, row in df.iterrows():
-        team = str(row['Team Name']).strip()
-        try:
-            pts = float(row['Points'])
-            points_map[team] = pts
-            points_map[team.lower()] = pts
-        except:
-            continue
-    return points_map
 
 # ----------------------------------------------------------------------
 # 3. 
@@ -303,13 +176,35 @@ def run_step1_scrape_data():
         keyword = ">" 
         
         try:
-            driver = uc.Chrome()
+            driver = uc.Chrome(version_main=147)
             driver.get(url)
             try:
                 WebDriverWait(driver, timeout).until(EC.presence_of_element_located((By.CLASS_NAME, "event-world-rank")))
             except: pass
             
             content = driver.page_source
+
+            # --- [新增] 提取赛事开始时间 ---
+            try:
+                # 寻找 <td class="eventdate"><span data-unix="1771066800000">...</span></td>
+                date_unix_match = re.search(r'<td class="eventdate">.*?<span .*?data-unix="(\d+)".*?>', content, re.DOTALL)
+                if date_unix_match:
+                    unix_ms = int(date_unix_match.group(1))
+                    event_start_date = pd.to_datetime(unix_ms, unit='ms').strftime('%Y-%m-%d')
+                    print(f"  -> 成功提取赛事开始日期: {event_start_date}")
+                    
+                    # 保存元数据
+                    meta_data = {"start_date": event_start_date}
+                    meta_file_path = os.path.join(target_directory, f"event_{event_id}_meta.json")
+                    os.makedirs(target_directory, exist_ok=True)
+                    with open(meta_file_path, "w") as f:
+                        json.dump(meta_data, f)
+                else:
+                    print("  -> 警告: 无法从页面提取赛事开始日期 (data-unix)")
+            except Exception as e:
+                print(f"  -> 提取日期时出错: {e}")
+            # -------------------------------
+
             team_name = re.findall('<div class="text">(.*?)<',content)
             team_rank_raw = re.findall('<div class="event-world-rank" title=".*?">#(.*?)<', content)
             team_rank_clean = [r for r in team_rank_raw if r.isdigit()]
@@ -466,28 +361,25 @@ def run_step1_scrape_data():
 
 # ----------------------------------------------------------------------
 # 4. 
-# (Step 2) 全局统计计算 (修改了积分计算逻辑 - 仅针对权重计算部分进行过滤)
+# (Step 2) 全局统计计算 (权重逻辑已抽离到外部独立文件)
 # ----------------------------------------------------------------------
 
 def run_step2_calculate_global_stats():
     print("\n===========================================================")
     print("  运行 Step 2 (来自 1.py): 计算全局统计数据")
     print("===========================================================")
-    
-    # [新增] 加载日期映射
-    event_date_map = load_event_date_map()
 
     all_player_summary_dataframes = [] 
     all_event_scores_for_saving = {} 
 
-    # [恢复] 尝试读取已有的赛事含金量表，以便保留旧数据
+    # 尝试读取外部独立脚本计算好的赛事含金量表
     try:
         if os.path.exists(event_score_file_path):
             df_scores = pd.read_excel(event_score_file_path, index_col=0)
             all_event_scores_for_saving = df_scores['event_score'].to_dict()
             print(f"成功加载 {len(all_event_scores_for_saving)} 条已存在的赛事含金量分数。")
     except Exception as e:
-        print(f"加载 'event_scores_lookup.xlsx' 失败 (将重新计算所有): {e}")
+        print(f"加载 'event_scores_lookup.xlsx' 失败: {e}")
         all_event_scores_for_saving = {}
 
     print("\n--- (Step 2 - Pass 1) 正在循环所有赛事以收集 *并处理* 分数 ---")
@@ -575,79 +467,13 @@ def run_step2_calculate_global_stats():
             player_summary['normalized_score'] = player_summary['normalized_group_score_capped'] + player_summary['normalized_playoff_score']
             all_player_summary_dataframes.append(player_summary)
             
-            # --- [修改核心] 计算赛事含金量 (Event Score) ---
-            # [恢复] 如果已存在，跳过计算
+            # --- [赛事含金量获取] ---
+            # 权重计算逻辑已单独提取至独立脚本
             if current_event_name in all_event_scores_for_saving:
-                print(f"赛事含金量已存在: {all_event_scores_for_saving[current_event_name]:.4f}，跳过计算。")
+                print(f"已加载外部计算的赛事含金量: {all_event_scores_for_saving[current_event_name]:.4f}")
             else:
-                print("正在计算赛事含金量 (基于归一化后的积分)...")
-                
-                # 1. 找到对应的日期
-                mapped_chinese_name = EVENT_ID_TO_SHEET3_NAME.get(event_id)
-                event_date = None
-                
-                if mapped_chinese_name and mapped_chinese_name in event_date_map:
-                    event_date = event_date_map[mapped_chinese_name]
-                    print(f"匹配到赛事日期: {mapped_chinese_name} -> {event_date}")
-                else:
-                    print(f"警告: 无法在映射表中找到赛事 ID {event_id} ({mapped_chinese_name}) 的日期。")
-                
-                # 2. 加载积分 (已包含归一化逻辑)
-                team_points_map = {}
-                if event_date:
-                    team_points_map = load_team_points_for_date(event_date)
-                    
-                if not team_points_map:
-                    print("未加载到积分数据，将使用默认极低分数。")
-                    
-                # 3. 统计该赛事所有参赛队伍的积分总和
-                
-                # ==============================================================================
-                # [新增/修改逻辑] 针对特定赛事，仅计算线下决赛（Playoffs）队伍权重
-                # ==============================================================================
-                
-                # 定义哪些赛事属于"分裂赛事"或需要严格过滤的赛事
-                SPLIT_EVENT_KEYWORDS = ["bounty"] # 你可以根据需要添加更多关键词
-                
-                # 判断当前赛事是否需要特殊处理
-                is_split_event = any(kw in current_event_name for kw in SPLIT_EVENT_KEYWORDS)
-                
-                if is_split_event:
-                    print(f"  -> [权重计算] 检测到分裂赛事 ({current_event_name})，仅提取淘汰赛阶段(Playoffs)队伍...")
-                    
-                    # 仅保留属于 Playoffs 阶段的行
-                    # PLAYOFF_STAGES = ["Grand final", "Semi-final", "Quarter-final", "3rd place"]
-                    df_filtered_for_weight = df[df['match_stage'].isin(PLAYOFF_STAGES)]
-                    
-                    if df_filtered_for_weight.empty:
-                        print("     警告: 该分裂赛事未找到 Playoff 数据（可能是海选阶段数据），权重计算可能不准确。")
-                        unique_teams = []
-                    else:
-                        unique_teams = pd.concat([df_filtered_for_weight['team'], df_filtered_for_weight['opponent']]).unique()
-                        print(f"     已提取 {len(unique_teams)} 支决赛圈队伍进行权重计算。")
-                else:
-                    # 对于普通赛事，保留原有逻辑：计算所有出现过的队伍
-                    unique_teams = pd.concat([df['team'], df['opponent']]).unique()
-                
-                # ==============================================================================
-                
-                event_total_points = 0.0
-                
-                for team in unique_teams:
-                    # 尝试匹配积分 (精确或小写)
-                    pts = team_points_map.get(team)
-                    if pts is None:
-                        pts = team_points_map.get(team.lower(), 0.0)
-                    
-                    if pts > 0:
-                        event_total_points += pts
-                
-                print(f"赛事参赛队伍总积分 (归一化后): {event_total_points}")
-                
-                current_event_score = event_total_points / STANDARD_TIER1_POINT_SUM
-                print(f"赛事含金量系数: {current_event_score:.4f}")
-                
-                all_event_scores_for_saving[current_event_name] = current_event_score
+                print(f"警告: 未在查找表中找到 {current_event_name} 的赛事含金量。请确保运行了权重计算脚本。")
+                all_event_scores_for_saving[current_event_name] = 0.0
             
         except Exception as e:
             print(f"错误: 处理 {raw_data_path} 失败: {e}")
@@ -683,36 +509,13 @@ def run_step2_calculate_global_stats():
             print(f"保存 global_stats.json 失败: {e}")
             return False, None, None 
 
-    print(f"\n--- (Step 2) 正在保存赛事含金量 ---")
-    if all_event_scores_for_saving:
-        try:
-            df_to_save = pd.DataFrame.from_dict(
-                all_event_scores_for_saving, 
-                orient='index', 
-                columns=['event_score']
-            )
-            df_to_save.index.name = 'event_name'
-            
-            # [新增] 对赛事含金量表进行简单的排序以匹配 urls 顺序
-            event_name_order = [url.split('/')[-1] for url in event_urls]
-            all_known_events = df_to_save.index.tolist()
-            ordered_events = [name for name in event_name_order if name in all_known_events]
-            other_events = [name for name in all_known_events if name not in event_name_order]
-            final_order = ordered_events + other_events
-            df_to_save = df_to_save.reindex(final_order)
-
-            df_to_save.to_excel(event_score_file_path)
-            print(f"成功保存赛事含金量记录: {event_score_file_path}")
-        except Exception as e:
-            print(f"保存赛事含金量表格失败: {e}")
-            
     print("\nStep 2 执行完毕。")
     return True, global_stats_calculated, all_event_scores_for_saving
 
 
 # ----------------------------------------------------------------------
 # 5. 
-# (Step 3) EVP 计算与汇总 (恢复了完整 Excel 格式化)
+# (Step 3) EVP 计算与汇总 (保持不变)
 # ----------------------------------------------------------------------
 
 def run_step3_calculate_evp_pivot():
@@ -1003,6 +806,11 @@ def run_step3_calculate_evp_pivot():
 # ----------------------------------------------------------------------
 
 if __name__ == "__main__":
+    # 注意：现在的主流程是：
+    # 先运行主脚本，让它执行跑通一次 Step 1 爬取数据；
+    # 然后运行外部独立的 event_weight_calculator.py 生成权重表；
+    # 接着再运行主脚本跑通 Step 2 和 Step 3。
+    
     step1_success = run_step1_scrape_data()
     
     step2_success = False

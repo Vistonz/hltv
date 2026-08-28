@@ -51,10 +51,10 @@ def get_all_mondays_urls(year):
     return mondays, urls
 
 # --- 3. 爬虫主逻辑 ---
-driver = uc.Chrome()
+driver = uc.Chrome(version_main=148)
 
 try:
-    year_to_crawl = 2025
+    year_to_crawl = 2026
     # 获取的日期列表里，9月的那条已经是 9月2日 了
     target_dates, hltv_urls = get_all_mondays_urls(year_to_crawl)
 

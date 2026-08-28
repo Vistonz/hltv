@@ -1,0 +1,6 @@
+﻿__pycache__/
+*.py[cod]
+*.class
+.vendor/
+.vscode/settings.json
+.conda/

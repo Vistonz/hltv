@@ -4,38 +4,43 @@ import time
 from openpyxl import Workbook, load_workbook
 import undetected_chromedriver as uc
 
-# === 初始数据配置 ===
-webfront = "https://www.hltv.org/stats/players?startDate=all&minMapCount=0"
-teamfront = "https://www.hltv.org/stats/teams?startDate=all&minMapCount=0"
-
-# eventfilter 保持不变，这是核心数据源
+# ================= 配置区域 =================
+# 1. 赛事过滤器配置
+# eventfilter: HLTV 统计页面的事件 ID 过滤参数
+# eventnamefilter: 对应的中文赛事名称，将作为 Excel 中的 Event_ID
 eventfilter = [
-    "&event=7903&event=7909",  "&event=8034", "&event=8043",
-    "&event=8292", "&event=7904", "&event=8044", "&event=8036",
-    "&event=7905", "&event=8045", "&event=8037",
-    "&event=7902","&event=8063","&event=8038","&event=7906&event=7910",
-    "&event=8039","&event=7907&event=7912","&event=8064","&event=8040",
-    "&event=8027","&event=8067","&event=8046","&event=8041","&event=7908","&event=8042"
+    "&event=8246",  "&event=8240", "&event=8047",
+    "&event=8413", "&event=8248","&event=8048","&event=8242","&event=8250","&event=8049","&event=8243","&event=8263","&event=8301"
 ]
 eventnamefilter = [
-    "BLAST赏金赛S1",  "IEM卡托维兹", "PGL克鲁日纳波卡",
-     "EPL S21", "BLAST里斯本公开赛", "PGL布加勒斯特", "IEM墨尔本",
-    "BLAST对抗赛S1", "PGL阿斯塔纳", "IEM达拉斯",
-    "BLAST奥斯汀Major","裂变天地S1","IEM科隆","BLAST赏金赛S2",
-    "电竞世界杯","BLAST伦敦公开赛","裂变天地S2","EPL S22",
-    "CAC2025","Thunderpick世界锦标赛","PGL布加勒斯特大师赛","IEM成都","BLAST对抗赛S2","SL布达佩斯Major"
+    "BLAST赏金赛S1",  "IEM克拉科夫", "PGL克卢日纳波卡",
+    "EPL S23", "BLAST鹿特丹公开赛","PGL布加勒斯特","IEM里约","BLAST对抗赛S1","PGL阿斯塔纳","IEM亚特兰大","CAC","IEM科隆Major"
 ]
 
-file_path = os.path.join("C:\\Users\\10725\\Desktop\\hltv\\hltv top", "grade.xlsx")
-keyword = ">"
-sleep_first = 25.6657
-sleep_others = 0.6657
+# 2. 输出路径配置
+output_dir = r"C:\Users\10725\Desktop\hltv\hltv top\2026 S1"
+grade_filename = "grade.xlsx"
+file_path = os.path.join(output_dir, grade_filename)
 
-# === 初始化 ===
-driver = uc.Chrome()
+# 3. 爬虫性能配置
+sleep_first = 25.6657    # 第一次加载页面的等待时间（用于过验证）
+sleep_others = 0.6657   # 后续操作的等待时间
+chrome_version = 148   # Chrome 浏览器主版本号
+
+# 4. 其他配置
+keyword = ">"
+# ===========================================
+
+# 确保输出目录存在
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+
+# === 初始化浏览器 ===
+driver = uc.Chrome(version_main=chrome_version)
 
 existing_events = set() 
 
+# === 读取现有文件或创建新文件 ===
 if os.path.exists(file_path):
     print(f"发现现有文件：{file_path}，正在读取已存在的赛事...")
     try:
@@ -55,7 +60,7 @@ if os.path.exists(file_path):
             "Rating_Diff(%)", "KPR", "ADR", "DPR", "RS", "KAST", "eaKPR", "eaADR", "eaDPR", "eaMK", "eaKAST",
         ])
 else:
-    print("未发现现有文件，创建新文件...")
+    print(f"未发现针对当前赛季的文件，在目标路径创建新文件: {file_path}")
     wb = Workbook()
     ws = wb.active
     ws.title = "Player Stats"
@@ -63,6 +68,10 @@ else:
         "Player", "Event_ID", "Country","CountryURL","Team", "Grade", "Rating", "Team_Rank",
         "Rating_Diff(%)", "KPR", "ADR", "DPR", "RS", "KAST", "eaKPR", "eaADR", "eaDPR", "eaMK", "eaKAST",
     ])
+
+# === 开始抓取数据 ===
+webfront = "https://www.hltv.org/stats/players?startDate=all&minMapCount=0"
+teamfront = "https://www.hltv.org/stats/teams?startDate=all&minMapCount=0"
 
 player_stats = {}
 zz = 0
@@ -76,13 +85,12 @@ for i in eventfilter:
         print(f"赛事 '{current_event_name}' 已存在于表格中，跳过...")
         j += 1 
         continue
-    # ====================
 
     print(f"开始抓取赛事: {current_event_name}...")
     event_id = current_event_name 
     j += 1
     
-    # 1. 抓取 Player Stats (保持不变)
+    # 1. 抓取 Player Stats
     driver.get(webfront + i)
     time.sleep(sleep_first if zz == 0 else sleep_others)
     zz = 1
@@ -97,7 +105,7 @@ for i in eventfilter:
     Flag = re.findall('class="flag" title="(.*?)">', content)
     FlagURL = re.findall('" src="(.*?)" class="flag"',content)
 
-    # 2. 抓取 Team Rating (保持不变)
+    # 2. 抓取 Team Rating
     team_rating_per_event = {}
     driver.get(teamfront + i)
     time.sleep(sleep_others)
@@ -114,7 +122,7 @@ for i in eventfilter:
             team_rating[team_name] = None
     team_rating_per_event[event_id] = team_rating
 
-    # 清洗玩家数据 (保持不变)
+    # 清洗玩家数据
     Name = []
     Mapcount = []
     tempzz = 0
@@ -128,45 +136,25 @@ for i in eventfilter:
         Rating[tempzz] = Rating[tempzz].split(keyword, 1)[-1].strip()
         tempzz += 1
 
-    # ==========================================
-    # 3. 队伍排名 Grade (逻辑修改部分)
-    # ==========================================
-    #
-    
+    # 3. 抓取队伍排名 Grade
     team_grade_dict = {}
-    
-    # 从 "&event=7909&event=7903" 中提取所有数字ID ['7909', '7903']
     extracted_event_ids = re.findall(r'event=(\d+)', i)
-    
     print(f"正在抓取排名，检测到子赛事ID: {extracted_event_ids}")
     
-    # 循环抓取所有关联ID的排名
-    # 后面的ID（通常是决赛）数据会覆盖前面的ID（小组赛），确保冠军排名正确
     for eid in extracted_event_ids:
-        # 构建 URL，使用 "/1" 作为通配 slug
         rank_url = f"https://www.hltv.org/events/{eid}/1"
-        
         driver.get(rank_url)
-        time.sleep(sleep_others) # 稍微等待加载
+        time.sleep(sleep_others)
         content = driver.page_source
-        
-        # 使用原有的正则逻辑抓取当前页面的排名
         Team2 = re.findall('"><a href="/team/(.*?)</a></div>', content)
         Grade = re.findall('</a></div>\n                      <div>(.*?)</div>', content)
-        
         for idx in range(len(Grade)):
-            # 简单的越界保护
             if idx < len(Team2):
                 team_name = Team2[idx].split(keyword, 1)[-1].strip()
                 grade_value = Grade[idx].split(keyword, 1)[-1].strip()
-                # 存入字典，如果队伍已存在（即之前在小组赛被抓取过），这里会更新为最新的（决赛）排名
                 team_grade_dict[team_name] = grade_value
 
-    # ==========================================
-    # (逻辑修改结束)
-    # ==========================================
-
-    # 4. 构建选手数据 (保持不变)
+    # 4. 构建选手数据
     team_to_players = {}
     for idx, name in enumerate(Name):
         player_id = Id[idx].split("/")[1] if idx < len(Id) else "unknown"
@@ -214,7 +202,6 @@ for i in eventfilter:
         if name not in player_stats:
             player_stats[name] = {}
         
-        # 在这里应用刚刚抓取的 grade 字典
         player_stats[name][event_id] = {
             "player_id": player_id,
             "flag": flag,
@@ -227,7 +214,7 @@ for i in eventfilter:
             "team_rating": team_rating_per_event[event_id].get(team, None),
             "rank_in_team": None,
             "rating_diff_pct": None,
-            "grade": team_grade_dict.get(team, "N/A"), # 这里使用动态抓取的排名
+            "grade": team_grade_dict.get(team, "N/A"),
             "dpr": dpr,
             "kast": kast,
             "rs": rs,
@@ -240,7 +227,7 @@ for i in eventfilter:
             "eakpr":eakpr,
         }
 
-    # 计算队内排名和rating差 (保持不变)
+    # 计算队内排名和rating差
     for team_name, players in team_to_players.items():
         sorted_players = sorted(players, key=lambda x: x[1], reverse=True)
         for rank, (name, _) in enumerate(sorted_players, 1):
@@ -251,7 +238,7 @@ for i in eventfilter:
                     diff_pct = (player_stats[name][event_id]["rating_float"] - team_rating_val) / team_rating_val
                     player_stats[name][event_id]["rating_diff_pct"] = round(diff_pct, 2)
 
-    # === 写入当前赛事的数据到Excel (保持不变) ===
+    # === 写入当前赛事的数据到Excel ===
     for player_name in Name:
         if player_name in player_stats and event_id in player_stats[player_name]:
             stats = player_stats[player_name][event_id]
@@ -282,4 +269,4 @@ for i in eventfilter:
     print(f"赛事 {event_id} 数据抓取并保存完成。")
 
 driver.quit()
-print("所有赛事数据抓取完成，Excel 文件已保存至：", file_path)
+print(f"所有赛事数据抓取完成，Excel 文件已保存至：{file_path}")
