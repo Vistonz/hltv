@@ -30,7 +30,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-def extract_matches_from_page(content, player_id, player_name, offset):
+def extract_matches_from_page(content, player_id, player_name, offset, diff_threshold=10):
     """
     Extract matches from the page source.
     Returns: (filtered_matches, all_on_page_satisfy, total_matches_count)
@@ -60,7 +60,7 @@ def extract_matches_from_page(content, player_id, player_name, offset):
             # Prefix with hltv.org as requested
             match_link = "hltv.org" + link_match.group(1)
             
-        if diff >= 10:
+        if diff >= diff_threshold:
             filtered_matches.append({
                 "Player": player_name,
                 "Player ID": player_id,
@@ -75,7 +75,7 @@ def extract_matches_from_page(content, player_id, player_name, offset):
             
     return filtered_matches, all_on_page_satisfy, total_on_page
 
-def get_matches_for_player(driver, player_id, player_name):
+def get_matches_for_player(driver, player_id, player_name, diff_threshold=10):
     base_url = f"https://www.hltv.org/stats/players/matches/{player_id}/{player_name}&sortColumn=KillDeath&sortDirection=Ascending"
     offset = 0
     all_filtered_matches = []
@@ -97,7 +97,7 @@ def get_matches_for_player(driver, player_id, player_name):
             break
             
         content = driver.page_source
-        page_matches, all_satisfy, count = extract_matches_from_page(content, player_id, player_name, offset)
+        page_matches, all_satisfy, count = extract_matches_from_page(content, player_id, player_name, offset, diff_threshold)
         
         if count == 0:
             print("  No matches found on this page.")
@@ -118,10 +118,13 @@ def get_matches_for_player(driver, player_id, player_name):
         
     return all_filtered_matches
 
-def main():
-    players_file = r"c:\Users\10725\Desktop\hltv\i\players.json"
-    json_output = r"c:\Users\10725\Desktop\hltv\i\ixilie_results.json"
-    excel_output = r"c:\Users\10725\Desktop\hltv\i\ixilie_results.xlsx"
+def find_worst_matches_all_players(
+    players_file=r"c:\Users\10725\Desktop\hltv\i\players.json",
+    json_output=r"c:\Users\10725\Desktop\hltv\i\ixilie_results.json",
+    excel_output=r"c:\Users\10725\Desktop\hltv\i\ixilie_results.xlsx",
+    diff_threshold=10,
+    player_limit=None,
+):
     
     if not os.path.exists(players_file):
         print("Error: players.json not found.")
@@ -143,12 +146,12 @@ def main():
         # Process all players from players.json
         # To limit the number of players (e.g., for testing), you can use:
         # for player in players[:10]:
-        for player in players:
+        for player in players[:player_limit]:
             pid = player.get("id")
             pname = player.get("name")
             print(f"Processing: {pname} ({pid})")
             
-            player_results = get_matches_for_player(driver, pid, pname)
+            player_results = get_matches_for_player(driver, pid, pname, diff_threshold)
             if player_results:
                 all_results.extend(player_results)
                 
@@ -177,4 +180,4 @@ def main():
         print("No matches found matching the criteria.")
 
 if __name__ == "__main__":
-    main()
+    find_worst_matches_all_players()
