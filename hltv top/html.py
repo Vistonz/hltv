@@ -23,7 +23,7 @@ event_mapping = {
     "BLAST Rivals 2026 Season 1": "BLAST对抗赛S1",
     "PGL Astana 2026": "PGL阿斯塔纳",
     "IEM Atlanta 2026": "IEM亚特兰大",
-    "CS Asia Championships 2026": "CAC", 
+    "CS Asia Championships 2026": "CAC",
     "IEM Cologne Major 2026": "IEM科隆Major",
 }
 
@@ -77,30 +77,13 @@ team_logos = {
 
 # 5. 评分阈值配置 (用于在网页中标记 优秀/较差 数据)
 avg_highvalues = {
-    "adr": 75, "kpr": 0.70, "dpr": 0.70, "rs": 1.0, 
+    "adr": 75, "kpr": 0.70, "dpr": 0.70, "rs": 1.0,
     "kast": 75, "rating": 1.04, "rank_change": 0.04,
 }
 avg_lowvalues = {
-    "adr": 69, "kpr": 0.62, "dpr": 0.62, "rs": -0.7, 
+    "adr": 69, "kpr": 0.62, "dpr": 0.62, "rs": -0.7,
     "kast": 69, "rating": 0.96, "rank_change": -0.04,
 }
-
-# 6. 初始化输出目录
-if not os.path.exists(output_dir):
-    os.makedirs(output_dir)
-html_output_dir = os.path.join(output_dir, 'html')
-if not os.path.exists(html_output_dir):
-    os.makedirs(html_output_dir)
-
-# ================= 1. 读取主数据 (Stats) =================
-print(">>> 正在读取 Stats 数据...")
-
-try:
-    df = pd.read_excel(grade_file_path)
-    print(f"成功读取主数据: {grade_file_path}")
-except Exception as e:
-    print(f"读取 grade.xlsx 失败: {e}")
-    exit()
 
 # 定义排名转换规则 (例如 1 -> 1st)
 def rank_to_text(rank):
@@ -113,58 +96,8 @@ def rank_to_text(rank):
     except:
         return str(rank)
 
-# ================= 2. 读取并处理荣誉数据 (Awards) =================
-print(">>> 正在读取 Awards 数据...")
 
-player_awards_map = {} 
-
-try:
-    # 从 2026 EVP.xlsx 的 "ALL the VPs" 表中读取荣誉数据
-    df_awards = pd.read_excel(award_file_path, sheet_name='ALL the VPs')
-    print(f"成功读取荣誉文件，共 {len(df_awards)} 行。")
-
-    # --- 识别关键列名 (支持多种命名方式) ---
-    col_map = {}
-    df_awards.columns = [str(c).strip() for c in df_awards.columns]
-    for col in df_awards.columns:
-        c_clean = str(col).strip().lower()
-        if 'id' in c_clean or 'player' in c_clean or '选手名' in c_clean:
-            col_map['ID'] = col
-        elif 'tourn' in c_clean or 'event' in c_clean or '赛事' in c_clean:
-            col_map['Tournament'] = col
-        elif 'award' in c_clean or '荣誉' in c_clean:
-            col_map['Award'] = col
-            
-    # 检查是否找齐了必要的列
-    if 'Tournament' not in col_map or 'Award' not in col_map or 'ID' not in col_map:
-        print(f"错误: 无法识别荣誉文件表头。当前列名: {list(df_awards.columns)}")
-    else:
-        match_count = 0
-        for _, row in df_awards.iterrows():
-            try:
-                p_name = str(row[col_map['ID']]).strip()
-                # 赛事名称 (可能是英文或已经翻译成中文)
-                t_raw = str(row[col_map['Tournament']]).strip().replace('"', '')
-                award = str(row[col_map['Award']]).strip()
-                
-                if not award or award.lower() == 'nan':
-                    continue
-                
-                # 尝试通过 mapping 转换为中文名，如果找不到则保留原样
-                t_chn = event_mapping.get(t_raw, t_raw)
-                
-                # 建立映射关系: (选手, 赛事) -> 荣誉
-                player_awards_map[(p_name, t_chn)] = award
-                match_count += 1
-            except Exception:
-                continue
-        print(f"荣誉数据处理完毕，建立 {match_count} 条映射关系。")
-
-except Exception as e:
-    print(f"读取荣誉文件严重失败: {e}")
-
-# ================= 3. HTML 模板定义 =================
-
+# ================= HTML 模板定义 =================
 html_head1_template = """
 <!DOCTYPE html>
 <html>
@@ -172,7 +105,7 @@ html_head1_template = """
         <meta charset="utf-8">
         <title>{player_name}</title>
         <link rel="stylesheet" href="./hltvstyle.css">
-    </head>  
+    </head>
     <body class="cols1101" data-livescore-server-url="https://scorebot-lb.hltv.org" style="background-color: rgb(255, 255, 255);" inmaintabuse="1">
         <nav class="navbar-smartphone smartphone-only" id="navBarSmartphone">
           <ul class="nav-content-smartphone">
@@ -184,7 +117,7 @@ html_head1_template = """
             <li class="navsmartphone-extras" data-nav-smartphone-menu-open-button=""><a href="#" class="dot-menu dot-menu-smartphone"><div data-reactroot="" class="dots-wrapper "><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></a></li>
           </ul>
         </nav>
-        
+
         <div class="bgPadding">
               <div class="bg-sidebar left narrow sticky-offset">
                 <div class="secondary-sidebar-container"><div class="v-wrapper" data-trdswuppiz="FirstColumnBottom1" data-qhltyfmqpw="703" style="min-height: 0px;"><div class="ready-vm-placement" data-vid="5ed0d404b519801b8a4d4edc"></div></div></div>
@@ -198,12 +131,12 @@ html_head1_template = """
               <div class="bg-sidebar right wide sticky-offset">
                 <div class="secondary-sidebar-container"><div class="v-wrapper" data-wxpdxamgmk="BelowBackgroundRightSideStickyWide" data-zquhebbvxj="704" style="min-height: 0px;"><div class="ready-vm-placement" data-vid="5ea1c28867200b43179499d0"></div></div></div>
               </div>
-            
+
           <div class="widthControl">
             <div class="colCon">
                 <div class="contentCol">
                   <div class="smartphone-only mobiletop"><div class="v-wrapper" data-wxpdxamgmk="TopMobile" data-wrgowvwwhc="732" style="min-height: 0px;"><div data-ref="vm-preloader" style="width: 320px; max-width: 320px; min-width: 320px; height: 50px; display: flex; flex-direction: column; justify-content: center; align-items: center; margin: 0px auto;"><div class="vm-placement" data-vid="633a8556c672387bad423389" data-id="633a8556c672387bad423389" data-pos="1113" id="633a8556c672387bad423389-1113" data-reg="true"></div></div></div></div>
-                
+
                 <article class="newsitem standard-box">
                     <div class="newsdsl">
                     <div class="newstext-con">
@@ -264,9 +197,9 @@ html_template = """
     <td class="newsdsl-tournament-stat-widget-tournament text-ellipsis">
     <a href="{tournament_link}">
         <div class="newsdsl-tournament-stat-widget-tournament-logo-container">
-            <img alt="{tournament_name}" 
-                src="{tournament_logo}" 
-                class="newsdsl-tournament-stat-widget-tournament-logo" 
+            <img alt="{tournament_name}"
+                src="{tournament_logo}"
+                class="newsdsl-tournament-stat-widget-tournament-logo"
                 title="{tournament_name}">
         </div>
         {tournament_name}
@@ -274,9 +207,9 @@ html_template = """
     </td>
     <td class="newsdsl-tournament-stat-widget-team">
         <div class="newsdsl-tournament-stat-widget-team-logo-container">
-            <img alt="{team_name}" 
-                src="{team_logo}" 
-                class="newsdsl-tournament-stat-widget-team-logo" 
+            <img alt="{team_name}"
+                src="{team_logo}"
+                class="newsdsl-tournament-stat-widget-team-logo"
                 title="{team_name}">
         </div>
         <span class="newsdsl-tournament-stat-widget-place">({team_rank})</span>
@@ -296,125 +229,218 @@ html_template = """
 </tr>
 """
 
-# ================= 4. 主逻辑：生成选手 HTML =================
 
-try:
-    unique_players = df['Player'].unique()
-    print(f"检测到 {len(unique_players)} 位选手，开始生成HTML...")
-except KeyError:
-    print("错误：grade文件中没有找到 'Player' 列。请检查文件格式。")
-    exit()
+def generate_all_player_tournament_sheets(
+    grade_file_path=grade_file_path,
+    award_file_path=award_file_path,
+    output_dir=output_dir,
+    event_mapping=event_mapping,
+    tournament_logos=tournament_logos,
+    tournament_links=tournament_links,
+    team_logos=team_logos,
+    avg_highvalues=avg_highvalues,
+    avg_lowvalues=avg_lowvalues,
+):
+    """根据 grade.xlsx + EVP.xlsx 生成每位选手的 HTML 数据报告页.
 
-count = 0
-for player_name in unique_players:
-    filtered_df = df[df['Player'] == player_name]
-    if filtered_df.empty:
-        continue
+    参数均可传入覆盖 (默认值 = 脚本内硬编码配置, 行为不变):
+      grade_file_path  选手各项数据的主表格
+      award_file_path  荣誉奖项数据 (MVP, EVP, VP)
+      output_dir       生成的 HTML 文件存放的根目录
+      event_mapping    赛事英文名 -> 中文显示名 映射
+      tournament_logos / tournament_links  赛事图标与链接
+      team_logos       战队图标配置
+      avg_highvalues / avg_lowvalues  评分高/低阈值
+    """
+    # ================= 初始化输出目录 =================
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    html_output_dir = os.path.join(output_dir, 'html')
+    if not os.path.exists(html_output_dir):
+        os.makedirs(html_output_dir)
 
-    # 获取基本信息
-    player_country = "Unknown"
-    player_flag_url = ""
+    # ================= 1. 读取主数据 (Stats) =================
+    print(">>> 正在读取 Stats 数据...")
+
     try:
-        first_row = filtered_df.iloc[0]
-        player_country = first_row.get('Country', "Unknown")
-        raw_url = str(first_row.get('CountryURL', ""))
-        if raw_url.startswith("http"):
-            player_flag_url = raw_url
-        elif raw_url:
-            player_flag_url = "https://www.hltv.org" + raw_url
-    except Exception:
-        pass
+        df = pd.read_excel(grade_file_path)
+        print(f"成功读取主数据: {grade_file_path}")
+    except Exception as e:
+        print(f"读取 grade.xlsx 失败: {e}")
+        return
 
-    html_rows = []
-    html_head_filled = html_head1_template.format(
-        player_name=player_name,
-        player_name1=player_name,
-        player_country=player_country,
-        player_flag_url=player_flag_url
-    )
+    # ================= 2. 读取并处理荣誉数据 (Awards) =================
+    print(">>> 正在读取 Awards 数据...")
 
-    for index, row in filtered_df.iterrows():
-        try:
-            tournament_name = str(row.get('Event_ID', "")).strip()
-            team_name = row.get('Team', "")
-            team_rank = row.get('Grade', "")
-            rating = row.get('Rating', 0.0)
-            rank_in_team = row.get('Team_Rank', "")
-            rank_change = row.get('Rating_Diff(%)', 0.0)
-            adr = row.get('ADR', 0.0)
-            kpr = row.get('KPR', 0.0)
-            dpr = row.get('DPR', 0.0)
-            rs = row.get('RS', 0.0)
-            kast = row.get('KAST', 0.0)
+    player_awards_map = {}
+    try:
+        # 从 2026 EVP.xlsx 的 "ALL the VPs" 表中读取荣誉数据
+        df_awards = pd.read_excel(award_file_path, sheet_name='ALL the VPs')
+        print(f"成功读取荣誉文件，共 {len(df_awards)} 行。")
 
-            def assign_class(value, high, low, inverse=False):
+        # --- 识别关键列名 (支持多种命名方式) ---
+        col_map = {}
+        df_awards.columns = [str(c).strip() for c in df_awards.columns]
+        for col in df_awards.columns:
+            c_clean = str(col).strip().lower()
+            if 'id' in c_clean or 'player' in c_clean or '选手名' in c_clean:
+                col_map['ID'] = col
+            elif 'tourn' in c_clean or 'event' in c_clean or '赛事' in c_clean:
+                col_map['Tournament'] = col
+            elif 'award' in c_clean or '荣誉' in c_clean:
+                col_map['Award'] = col
+
+        # 检查是否找齐了必要的列
+        if 'Tournament' not in col_map or 'Award' not in col_map or 'ID' not in col_map:
+            print(f"错误: 无法识别荣誉文件表头。当前列名: {list(df_awards.columns)}")
+        else:
+            match_count = 0
+            for _, row in df_awards.iterrows():
                 try:
-                    val = float(value)
-                    if not inverse:
-                        if val > high: return "won"
-                        elif val < low: return "lost"
-                    else:
-                        if val > high: return "lost"
-                        elif val < low: return "won"
-                except:
-                    pass
-                return ""
+                    p_name = str(row[col_map['ID']]).strip()
+                    # 赛事名称 (可能是英文或已经翻译成中文)
+                    t_raw = str(row[col_map['Tournament']]).strip().replace('"', '')
+                    award = str(row[col_map['Award']]).strip()
 
-            adr_class = assign_class(adr, avg_highvalues['adr'], avg_lowvalues['adr'])
-            kpr_class = assign_class(kpr, avg_highvalues['kpr'], avg_lowvalues['kpr'])
-            dpr_class = assign_class(dpr, avg_highvalues['dpr'], avg_lowvalues['dpr'], inverse=True)
-            rs_class = assign_class(rs, avg_highvalues['rs'], avg_lowvalues['rs'])
-            kast_class = assign_class(kast, avg_highvalues['kast'], avg_lowvalues['kast'])
-            rating_class = assign_class(rating, avg_highvalues['rating'], avg_lowvalues['rating'])
-            rank_change_class = assign_class(rank_change, avg_highvalues['rank_change'], avg_lowvalues['rank_change'])
+                    if not award or award.lower() == 'nan':
+                        continue
 
-            try:
-                rank_change_str = f"{(float(rank_change))*100:.0f}%"
-                kast_str = f"{float(kast):.1f}%"
-                rating_str = f"{float(rating):.2f}"
-                kpr_str = f"{float(kpr):.2f}"
-                dpr_str = f"{float(dpr):.2f}"
-                rs_str = (f"+{float(rs):.2f}" if float(rs) > 0 else f"{float(rs):.2f}")
-                adr_str = f"{float(adr):.1f}"
-            except:
-                rank_change_str, kast_str, rating_str, kpr_str, dpr_str, rs_str, adr_str = map(str, [rank_change, kast, rating, kpr, dpr, rs, adr])
+                    # 尝试通过 mapping 转换为中文名，如果找不到则保留原样
+                    t_chn = event_mapping.get(t_raw, t_raw)
 
-            t_logo = tournament_logos.get(tournament_name, "")
-            t_link = tournament_links.get(tournament_name, "")
-            m_team_logo = team_logos.get(team_name, "")
+                    # 建立映射关系: (选手, 赛事) -> 荣誉
+                    player_awards_map[(p_name, t_chn)] = award
+                    match_count += 1
+                except Exception:
+                    continue
+            print(f"荣誉数据处理完毕，建立 {match_count} 条映射关系。")
 
-            award_text = player_awards_map.get((str(player_name).strip(), str(tournament_name).strip()), "")
-            
-            html_row = html_template.format(
-                tournament_name=tournament_name,
-                tournament_link=t_link,
-                tournament_logo=t_logo,
-                team_name=team_name,
-                team_logo=m_team_logo,
-                team_rank=team_rank,
-                rating=f'<span class="{rating_class}">{rating_str}</span>',
-                rank_in_team=rank_in_team,
-                rank_change=f'<span class="{rank_change_class}">{rank_change_str}</span>',
-                adr=f'<span class="{adr_class}">{adr_str}</span>',
-                kpr=f'<span class="{kpr_class}">{kpr_str}</span>',
-                dpr=f'<span class="{dpr_class}">{dpr_str}</span>',
-                rs=f'<span class="{rs_class}">{rs_str}%</span>',
-                kast=f'<span class="{kast_class}">{kast_str}</span>',
-                award=award_text
-            )
-            html_rows.append(html_row)
-        except Exception as e_row:
-            print(f"处理行数据时出错: {e_row}")
+    except Exception as e:
+        print(f"读取荣誉文件严重失败: {e}")
+
+    # ================= 3. 主逻辑：生成选手 HTML =================
+
+    try:
+        unique_players = df['Player'].unique()
+        print(f"检测到 {len(unique_players)} 位选手，开始生成HTML...")
+    except KeyError:
+        print("错误：grade文件中没有找到 'Player' 列。请检查文件格式。")
+        return
+
+    count = 0
+    for player_name in unique_players:
+        filtered_df = df[df['Player'] == player_name]
+        if filtered_df.empty:
             continue
 
-    final_html = html_head_filled + "\n".join(html_rows) + html_tail_str
-    safe_player_name = str(player_name).replace('/', '_').replace('\\', '_')
-    output_html_path = os.path.join(html_output_dir, f'{safe_player_name}_tournament_sheet.html')
-    try:
-        with open(output_html_path, 'w', encoding='utf-8') as f:
-            f.write(final_html)
-        count += 1
-    except Exception as e:
-        print(f"写入文件失败 {player_name}: {e}")
+        # 获取基本信息
+        player_country = "Unknown"
+        player_flag_url = ""
+        try:
+            first_row = filtered_df.iloc[0]
+            player_country = first_row.get('Country', "Unknown")
+            raw_url = str(first_row.get('CountryURL', ""))
+            if raw_url.startswith("http"):
+                player_flag_url = raw_url
+            elif raw_url:
+                player_flag_url = "https://www.hltv.org" + raw_url
+        except Exception:
+            pass
 
-print(f"所有网页已生成完毕，共生成 {count} 个文件，保存在 {html_output_dir}")
+        html_rows = []
+        html_head_filled = html_head1_template.format(
+            player_name=player_name,
+            player_name1=player_name,
+            player_country=player_country,
+            player_flag_url=player_flag_url
+        )
+
+        for index, row in filtered_df.iterrows():
+            try:
+                tournament_name = str(row.get('Event_ID', "")).strip()
+                team_name = row.get('Team', "")
+                team_rank = row.get('Grade', "")
+                rating = row.get('Rating', 0.0)
+                rank_in_team = row.get('Team_Rank', "")
+                rank_change = row.get('Rating_Diff(%)', 0.0)
+                adr = row.get('ADR', 0.0)
+                kpr = row.get('KPR', 0.0)
+                dpr = row.get('DPR', 0.0)
+                rs = row.get('RS', 0.0)
+                kast = row.get('KAST', 0.0)
+
+                def assign_class(value, high, low, inverse=False):
+                    try:
+                        val = float(value)
+                        if not inverse:
+                            if val > high: return "won"
+                            elif val < low: return "lost"
+                        else:
+                            if val > high: return "lost"
+                            elif val < low: return "won"
+                    except:
+                        pass
+                    return ""
+
+                adr_class = assign_class(adr, avg_highvalues['adr'], avg_lowvalues['adr'])
+                kpr_class = assign_class(kpr, avg_highvalues['kpr'], avg_lowvalues['kpr'])
+                dpr_class = assign_class(dpr, avg_highvalues['dpr'], avg_lowvalues['dpr'], inverse=True)
+                rs_class = assign_class(rs, avg_highvalues['rs'], avg_lowvalues['rs'])
+                kast_class = assign_class(kast, avg_highvalues['kast'], avg_lowvalues['kast'])
+                rating_class = assign_class(rating, avg_highvalues['rating'], avg_lowvalues['rating'])
+                rank_change_class = assign_class(rank_change, avg_highvalues['rank_change'], avg_lowvalues['rank_change'])
+
+                try:
+                    rank_change_str = f"{(float(rank_change))*100:.0f}%"
+                    kast_str = f"{float(kast):.1f}%"
+                    rating_str = f"{float(rating):.2f}"
+                    kpr_str = f"{float(kpr):.2f}"
+                    dpr_str = f"{float(dpr):.2f}"
+                    rs_str = (f"+{float(rs):.2f}" if float(rs) > 0 else f"{float(rs):.2f}")
+                    adr_str = f"{float(adr):.1f}"
+                except:
+                    rank_change_str, kast_str, rating_str, kpr_str, dpr_str, rs_str, adr_str = map(str, [rank_change, kast, rating, kpr, dpr, rs, adr])
+
+                t_logo = tournament_logos.get(tournament_name, "")
+                t_link = tournament_links.get(tournament_name, "")
+                m_team_logo = team_logos.get(team_name, "")
+
+                award_text = player_awards_map.get((str(player_name).strip(), str(tournament_name).strip()), "")
+
+                html_row = html_template.format(
+                    tournament_name=tournament_name,
+                    tournament_link=t_link,
+                    tournament_logo=t_logo,
+                    team_name=team_name,
+                    team_logo=m_team_logo,
+                    team_rank=team_rank,
+                    rating=f'<span class="{rating_class}">{rating_str}</span>',
+                    rank_in_team=rank_in_team,
+                    rank_change=f'<span class="{rank_change_class}">{rank_change_str}</span>',
+                    adr=f'<span class="{adr_class}">{adr_str}</span>',
+                    kpr=f'<span class="{kpr_class}">{kpr_str}</span>',
+                    dpr=f'<span class="{dpr_class}">{dpr_str}</span>',
+                    rs=f'<span class="{rs_class}">{rs_str}%</span>',
+                    kast=f'<span class="{kast_class}">{kast_str}</span>',
+                    award=award_text
+                )
+                html_rows.append(html_row)
+            except Exception as e_row:
+                print(f"处理行数据时出错: {e_row}")
+                continue
+
+        final_html = html_head_filled + "\n".join(html_rows) + html_tail_str
+        safe_player_name = str(player_name).replace('/', '_').replace('\\', '_')
+        output_html_path = os.path.join(html_output_dir, f'{safe_player_name}_tournament_sheet.html')
+        try:
+            with open(output_html_path, 'w', encoding='utf-8') as f:
+                f.write(final_html)
+            count += 1
+        except Exception as e:
+            print(f"写入文件失败 {player_name}: {e}")
+
+    print(f"所有网页已生成完毕，共生成 {count} 个文件，保存在 {html_output_dir}")
+
+
+if __name__ == "__main__":
+    generate_all_player_tournament_sheets()
