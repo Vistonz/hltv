@@ -13,11 +13,11 @@ THRESHOLD_RATIO = 0.10
 
 # ===========================================
 
-def main():
-    print(f"正在读取数据: {INPUT_FILE} ...")
-    
-    if not os.path.exists(INPUT_FILE):
-        print(f"错误: 找不到文件 {INPUT_FILE}")
+def analyze_predictions(input_file=INPUT_FILE, output_file=OUTPUT_FILE, threshold_ratio=THRESHOLD_RATIO):
+    print(f"正在读取数据: {input_file} ...")
+
+    if not os.path.exists(input_file):
+        print(f"错误: 找不到文件 {input_file}")
         return
 
     # --- 容器初始化 ---
@@ -26,7 +26,7 @@ def main():
     total_valid_users = 0
 
     # --- 数据读取与聚合 ---
-    with open(INPUT_FILE, 'r', encoding='utf-8') as f:
+    with open(input_file, 'r', encoding='utf-8') as f:
         for line in f:
             try:
                 line = line.strip()
@@ -56,7 +56,7 @@ def main():
 
     # --- 开始写入 Excel ---
     try:
-        with pd.ExcelWriter(OUTPUT_FILE, engine='openpyxl') as writer:
+        with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
             
             # ==========================================
             # Sheet 1: 平均排名总榜 (带过滤)
@@ -69,7 +69,7 @@ def main():
                 mention_rate = count / total_valid_users
                 
                 # --- [核心修改] 过滤逻辑 ---
-                if mention_rate < THRESHOLD_RATIO:
+                if mention_rate < threshold_ratio:
                     filtered_count += 1
                     continue
                 # -------------------------
@@ -92,7 +92,7 @@ def main():
                 df_summary = df_summary.sort_values(by=["平均预测排名", "被预测次数"], ascending=[True, False])
             
             df_summary.to_excel(writer, sheet_name="总榜_平均排名(Filtered)", index=False)
-            print(f"  - 总榜生成完毕: 保留 {len(df_summary)} 人 (已剔除 {filtered_count} 名提及率 < {THRESHOLD_RATIO:.0%} 的选手)")
+            print(f"  - 总榜生成完毕: 保留 {len(df_summary)} 人 (已剔除 {filtered_count} 名提及率 < {threshold_ratio:.0%} 的选手)")
 
             # ==========================================
             # Sheet 2-21: 各排名详细得票
@@ -115,12 +115,12 @@ def main():
                 df.to_excel(writer, sheet_name=sheet_name, index=False)
         
         print("\n" + "="*30)
-        print(f"分析报告已生成: {OUTPUT_FILE}")
-        print(f"过滤标准: 提及率 >= {THRESHOLD_RATIO:.0%}")
+        print(f"分析报告已生成: {output_file}")
+        print(f"过滤标准: 提及率 >= {threshold_ratio:.0%}")
         print("="*30)
 
     except Exception as e:
         print(f"Excel 保存失败: {e}")
 
 if __name__ == "__main__":
-    main()
+    analyze_predictions()
