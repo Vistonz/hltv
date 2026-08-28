@@ -7,11 +7,9 @@ from openpyxl import Workbook
 
 # --- 1. 准备工作 ---
 base_save_dir = "database/rank"
-if not os.path.exists(base_save_dir):
-    os.makedirs(base_save_dir)
 
 # --- 2. URL 生成函数 (增加了特例处理) ---
-def get_all_mondays_urls(year):
+def get_all_mondays_urls(year: int):
     mondays = []
     urls = []
     
@@ -50,56 +48,63 @@ def get_all_mondays_urls(year):
         
     return mondays, urls
 
-# --- 3. 爬虫主逻辑 ---
-driver = uc.Chrome(version_main=148)
+# --- 3. 单周排名抓取 ---
+def scrape_single_rank_page(driver, url, date_obj, base_save_dir):
+    print(f"--------------------------------")
+    print(f"正在爬取: {url}")
 
-try:
-    year_to_crawl = 2026
-    # 获取的日期列表里，9月的那条已经是 9月2日 了
-    target_dates, hltv_urls = get_all_mondays_urls(year_to_crawl)
+    try:
+        driver.get(url)
+        time.sleep(0.5) # 建议根据网速调整，HLTV有时候加载慢
 
-    for date_obj, url in zip(target_dates, hltv_urls):
-        print(f"--------------------------------")
-        print(f"正在爬取: {url}")
-        
-        try:
-            driver.get(url)
-            time.sleep(0.5) # 建议根据网速调整，HLTV有时候加载慢
-            
-            content = driver.page_source 
-            
-            # 正则提取
-            teams = re.findall(r'"><span class="name">(.*?)<', content)
-            # 优化后的正则，直接提取括号内的数字
-            points_raw = re.findall(r'<span class="points">\((.*?)<', content) 
-            
-            # 简单校验
-            if not teams:
-                print(f"{url} 未找到数据，可能未发布或加载失败")
-                continue
+        content = driver.page_source
 
-            min_len = min(len(teams), len(points_raw))
+        # 正则提取
+        teams = re.findall(r'"><span class="name">(.*?)<', content)
+        # 优化后的正则，直接提取括号内的数字
+        points_raw = re.findall(r'<span class="points">\((.*?)<', content)
 
-            # 创建 Excel
-            wb = Workbook()
-            ws = wb.active
-            ws.title = "Team Ranking"
-            ws.append(["Rank", "Team Name", "Points"])
-            
-            for i in range(min_len):
-                ws.append([i + 1, teams[i], points_raw[i]])
-            
-            # 保存文件名，使用 target_date 生成
-            # 9月的那份文件会自动保存为 2025-09-02.xlsx
-            filename = f"{date_obj.strftime('%Y-%m-%d')}.xlsx"
-            file_path = os.path.join(base_save_dir, filename)
-            
-            wb.save(file_path)
-            print(f"保存成功: {filename}")
+        # 简单校验
+        if not teams:
+            print(f"{url} 未找到数据，可能未发布或加载失败")
+            return False
 
-        except Exception as e:
-            print(f"错误: {e}")
+        min_len = min(len(teams), len(points_raw))
 
-finally:
-    driver.quit()
-    print("所有任务完成。")
+        # 创建 Excel
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Team Ranking"
+        ws.append(["Rank", "Team Name", "Points"])
+
+        for i in range(min_len):
+            ws.append([i + 1, teams[i], points_raw[i]])
+
+        # 保存文件名，使用 target_date 生成
+        # 9月的那份文件会自动保存为 2025-09-02.xlsx
+        filename = f"{date_obj.strftime('%Y-%m-%d')}.xlsx"
+        file_path = os.path.join(base_save_dir, filename)
+
+        wb.save(file_path)
+        print(f"保存成功: {filename}")
+        return True
+
+    except Exception as e:
+        print(f"错误: {e}")
+        return False
+
+# --- 4. 年度周排名全量爬取主入口 ---
+def crawl_yearly_rankings(year=2026, base_save_dir=base_save_dir, chrome_version=148):
+    if not os.path.exists(base_save_dir):
+        os.makedirs(base_save_dir)
+    driver = uc.Chrome(version_main=chrome_version)
+    try:
+        target_dates, hltv_urls = get_all_mondays_urls(year)
+        for date_obj, url in zip(target_dates, hltv_urls):
+            scrape_single_rank_page(driver, url, date_obj, base_save_dir)
+    finally:
+        driver.quit()
+        print("所有任务完成。")
+
+if __name__ == "__main__":
+    crawl_yearly_rankings()
