@@ -2,13 +2,13 @@ import re
 import json
 import os
 
-def extract_player_data():
-    file_path = r"c:\Users\10725\Desktop\hltv\i\Counter-Strike Player statistics database _ HLTV.org.html"
-    output_path = r"c:\Users\10725\Desktop\hltv\i\players.json"
-    
+def extract_player_data(
+    file_path=r"c:\Users\10725\Desktop\hltv\i\Counter-Strike Player statistics database _ HLTV.org.html",
+    output_path=r"c:\Users\10725\Desktop\hltv\i\players.json",
+) -> list[dict]:
     if not os.path.exists(file_path):
         print(f"File not found: {file_path}")
-        return
+        return []
 
     print(f"Reading {file_path}...")
     with open(file_path, "r", encoding="utf-8") as f:
@@ -35,6 +35,7 @@ def extract_player_data():
         json.dump(result, f, indent=4, ensure_ascii=False)
     
     print(f"Data saved to {output_path}")
+    return result
 
 if __name__ == "__main__":
     extract_player_data()
