@@ -4,3 +4,9 @@
 .vendor/
 .vscode/settings.json
 .conda/
+
+# 爬虫运行时产物 (由脚本生成, 不入库)
+i/*.html
+i/players.json
+i/ixilie_results.json
+i/ixilie_results.xlsx

@@ -124,6 +124,7 @@ def find_worst_matches_all_players(
     excel_output=r"/home/hongbin/Desktop/hltv/i/ixilie_results.xlsx",
     diff_threshold=10,
     player_limit=None,
+    chrome_version=None,
 ):
     
     if not os.path.exists(players_file):
@@ -138,7 +139,7 @@ def find_worst_matches_all_players(
     # Initialize uc.Chrome
     options = uc.ChromeOptions()
     # options.add_argument('--headless') # Uncomment for headless mode
-    driver = uc.Chrome(options=options)
+    driver = uc.Chrome(options=options, version_main=chrome_version)
     
     all_results = []
     
