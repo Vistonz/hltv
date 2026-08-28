@@ -19,7 +19,7 @@ eventfilter="?event=8914"
 keyword = ">" #用于清除rating和name之前的一些多余字符
 #用于填写表格的第一行
 minMapCountfilter="&minMapCount=0" # 图池数筛选器，更改数字使用
-file_path = os.path.join("C:\\Users\\10725\\Desktop\\hltv\\hltv team", "teamstat.xlsx") #表格文件保存路径，根据需要更改
+file_path = os.path.join("/home/hongbin/Desktop/hltv/hltv team", "teamstat.xlsx") #表格文件保存路径，根据需要更改
 
 """
 初始数据区 over

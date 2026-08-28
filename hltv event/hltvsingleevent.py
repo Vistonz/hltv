@@ -22,7 +22,7 @@ minrating = 0 #大于此数的选手rating纳入统计
 
 match = re.search(r"[-+]?\d+\.?\d*|\.\d+", eventfilter)
 event_id = match.group(0)
-file_path = os.path.join(f"C:\\Users\\10725\\Desktop\\hltv\\hltv event", "rating_group.xlsx") #表格文件保存路径，根据需要更改
+file_path = os.path.join(f"/home/hongbin/Desktop/hltv/hltv event", "rating_group.xlsx") #表格文件保存路径，根据需要更改
 #用于填写表格的第一行
 #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 #用于填写表格的第一行

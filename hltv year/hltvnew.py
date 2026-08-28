@@ -38,7 +38,7 @@ bigeventfinalfilter=bigeventfilter+"&playoffMatchType=GRAND_FINAL"
 
 minMapCountfilter="&minMapCount=65" # 图池数筛选器，更改数字使用
 minrating = 1.04 #大于此数的选手rating纳入统计
-file_path = os.path.join("C:\\Users\\10725\\Desktop\\hltv\\hltv year", "rating2026.xlsx") #表格文件保存路径，根据需要更改
+file_path = os.path.join("/home/hongbin/Desktop/hltv/hltv year", "rating2026.xlsx") #表格文件保存路径，根据需要更改
 
 wb = Workbook()
 ws = wb.active

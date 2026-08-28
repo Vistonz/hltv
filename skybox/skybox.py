@@ -7,7 +7,7 @@ import undetected_chromedriver as uc
 import time
 from openpyxl import Workbook
 from openpyxl import load_workbook
-pytesseract.pytesseract.tesseract_cmd = r"C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
+pytesseract.pytesseract.tesseract_cmd = r"/usr/bin/tesseract"
 playerwebfront = "https://edge.skybox.gg/u/player-stats/"
 totalwebfront = "https://edge.skybox.gg/u/leaderboards?before=01-09-2025&min_rank=&min_rounds_played=1000&order_by=HLTV_RATING2&order_by_direction=desc&since=01-01-2025" 
 events_ID=[
@@ -37,7 +37,7 @@ ws = wb.active
 driver = uc.Chrome() 
 names = []
 player_IDs = []
-file_path = os.path.join("C:\\Users\\10725\\Desktop\\hltv\\skybox", "skybox.xlsx")
+file_path = os.path.join("/home/hongbin/Desktop/hltv/skybox", "skybox.xlsx")
 events_total = ""
 for i in events_ID:
     events_total += i

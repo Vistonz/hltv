@@ -3,8 +3,8 @@ import json
 import os
 
 def extract_player_data(
-    file_path=r"c:\Users\10725\Desktop\hltv\i\Counter-Strike Player statistics database _ HLTV.org.html",
-    output_path=r"c:\Users\10725\Desktop\hltv\i\players.json",
+    file_path=r"/home/hongbin/Desktop/hltv/i/Counter-Strike Player statistics database _ HLTV.org.html",
+    output_path=r"/home/hongbin/Desktop/hltv/i/players.json",
 ) -> list[dict]:
     if not os.path.exists(file_path):
         print(f"File not found: {file_path}")

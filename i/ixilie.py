@@ -119,9 +119,9 @@ def get_matches_for_player(driver, player_id, player_name, diff_threshold=10):
     return all_filtered_matches
 
 def find_worst_matches_all_players(
-    players_file=r"c:\Users\10725\Desktop\hltv\i\players.json",
-    json_output=r"c:\Users\10725\Desktop\hltv\i\ixilie_results.json",
-    excel_output=r"c:\Users\10725\Desktop\hltv\i\ixilie_results.xlsx",
+    players_file=r"/home/hongbin/Desktop/hltv/i/players.json",
+    json_output=r"/home/hongbin/Desktop/hltv/i/ixilie_results.json",
+    excel_output=r"/home/hongbin/Desktop/hltv/i/ixilie_results.xlsx",
     diff_threshold=10,
     player_limit=None,
 ):

@@ -18,7 +18,7 @@ eventnamefilter = [
 ]
 
 # 2. 输出路径配置
-output_dir = r"C:\Users\10725\Desktop\hltv\hltv top\2026 S1"
+output_dir = r"/home/hongbin/Desktop/hltv/hltv top/2026 S1"
 grade_filename = "grade.xlsx"
 file_path = os.path.join(output_dir, grade_filename)
 

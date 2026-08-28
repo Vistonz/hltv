@@ -6,9 +6,9 @@ import os
 # grade_file_path: 选手各项数据的主表格
 # award_file_path: 荣誉奖项数据 (MVP, EVP, VP)
 # output_dir: 生成的 HTML 文件存放的根目录
-grade_file_path = r'C:\Users\10725\Desktop\hltv\hltv top\2026 S1\grade.xlsx'
-award_file_path = r'C:\Users\10725\Desktop\hltv\hltv top\2026 S1\2026 EVP.xlsx'
-output_dir = r'C:\Users\10725\Desktop\hltv\hltv top\2026 S1'
+grade_file_path = r'/home/hongbin/Desktop/hltv/hltv top/2026 S1/grade.xlsx'
+award_file_path = r'/home/hongbin/Desktop/hltv/hltv top/2026 S1/2026 EVP.xlsx'
+output_dir = r'/home/hongbin/Desktop/hltv/hltv top/2026 S1'
 
 # 2. 赛事名称映射 (英文名 -> 中文显示名)
 # 脚本会优先尝试在此映射中寻找中文名，找不到则使用原名
