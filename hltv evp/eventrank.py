@@ -37,9 +37,11 @@ def get_event_id_from_url(url):
         return match.group(0)
     return None
 
-def load_team_points_for_date(date_str):
-    target_path_xlsx = os.path.join(rank_db_directory, f"{date_str}.xlsx")
-    target_path_csv = os.path.join(rank_db_directory, f"{date_str}.csv")
+def load_team_points_for_date(date_str, rank_db_directory_=None):
+    # 允许外部传入 rank 目录 (hltv evp.py 一站式调用), 缺省用模块配置
+    rank_db = rank_db_directory if rank_db_directory_ is None else rank_db_directory_
+    target_path_xlsx = os.path.join(rank_db, f"{date_str}.xlsx")
+    target_path_csv = os.path.join(rank_db, f"{date_str}.csv")
     
     df = pd.DataFrame()
     if os.path.exists(target_path_xlsx):
@@ -75,21 +77,33 @@ def load_team_points_for_date(date_str):
 # ----------------------------------------------------------------------
 # 3. 核心计算逻辑
 # ----------------------------------------------------------------------
-def calculate_all_event_weights():
+def calculate_all_event_weights(event_urls_=None, base_directory_=None,
+                                rank_db_directory_=None, event_score_file_path_=None):
+    """计算赛事含金量权重 (赛事队伍积分 / 当期世界总积分) 并保存 event_scores_lookup.xlsx.
+
+    参数可覆盖模块级配置 (供 hltv evp.py 一站式调用传入同一份配置);
+    缺省时使用本脚本模块级配置, 保持独立运行能力。
+    返回: dict {event_name: event_score}.
+    """
+    urls = event_urls if event_urls_ is None else event_urls_
+    base = base_directory if base_directory_ is None else base_directory_
+    rank_db = rank_db_directory if rank_db_directory_ is None else rank_db_directory_
+    score_file = event_score_file_path if event_score_file_path_ is None else event_score_file_path_
+
     print("===========================================================")
     print(" 开始计算赛事权重 (赛事队伍总分 / 当期世界总得分)")
     print("===========================================================")
-    
+
     all_event_scores = {}
-    
-    for url in event_urls:
+
+    for url in urls:
         event_id = get_event_id_from_url(url)
         current_event_name = url.split('/')[-1]
         if not event_id: continue
             
         print(f"\n--- 正在计算: {current_event_name} ---")
         
-        target_directory = os.path.join(base_directory, event_id)
+        target_directory = os.path.join(base, event_id)
         raw_data_path = os.path.join(target_directory, f"raw_event_{event_id}_data.xlsx")
         meta_file_path = os.path.join(target_directory, f"event_{event_id}_meta.json")
         
@@ -113,7 +127,7 @@ def calculate_all_event_weights():
             try:
                 target_dt = pd.to_datetime(event_date)
                 rank_files = []
-                for fname in os.listdir(rank_db_directory):
+                for fname in os.listdir(rank_db):
                     if fname.endswith(".xlsx") or fname.endswith(".csv"):
                         try:
                             date_part = fname.replace(".xlsx", "").replace(".csv", "")
@@ -126,7 +140,7 @@ def calculate_all_event_weights():
                 if valid_files:
                     best_match = valid_files[-1]
                     closest_file_date_str = best_match[0].strftime('%Y-%m-%d')
-                    team_points_map, total_global_points = load_team_points_for_date(closest_file_date_str)
+                    team_points_map, total_global_points = load_team_points_for_date(closest_file_date_str, rank_db)
             except Exception as e:
                 print(f" 匹配排名文件失败: {e}")
                 
@@ -165,8 +179,10 @@ def calculate_all_event_weights():
         final_order = [name for name in event_name_order if name in all_known] + [name for name in all_known if name not in event_name_order]
         df_to_save = df_to_save.reindex(final_order)
 
-        df_to_save.to_excel(event_score_file_path)
-        print(f"\n成功保存所有赛事含金量至: {event_score_file_path}")
+        df_to_save.to_excel(score_file)
+        print(f"\n成功保存所有赛事含金量至: {score_file}")
+
+    return all_event_scores
 
 if __name__ == "__main__":
     calculate_all_event_weights()

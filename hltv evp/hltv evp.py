@@ -9,6 +9,12 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 
+# 新算法 (2026-08-30): 用 evp_experiment 的 EVP_CONFIG 定案 (obj=107.03) 替换旧 calculate_performance_score 计算.
+# 保留: 赛事含金量权重 (event_scores_lookup.xlsx) + 产物输出结构 (EVP_Summary/Per_Map_Scores/透视表).
+import evp_experiment as evp_exp
+# 赛事含金量 (eventrank): 计算赛事队伍积分/当期世界总积分 → event_scores_lookup.xlsx (Step 1.5)
+import eventrank
+
 # ----------------------------------------------------------------------
 # 1. 
 # 全局配置区
@@ -139,7 +145,35 @@ def calculate_performance_score(
 
 
 # ----------------------------------------------------------------------
-# 3. 
+# 2.5
+# (Step 0) 更新 HLTV 周排名快照 (增量, hltv rank.py)
+# ----------------------------------------------------------------------
+
+def run_step0_update_rank():
+    """(Step 0, hltv rank) 增量抓取 HLTV 周排名快照 (database/rank/YYYY-MM-DD.xlsx).
+
+    复用 hltv rank.py 的 crawl_yearly_rankings (only_missing=True):
+    只补『已发布且本地缺失』的周一快照, 已最新时秒过 (0 新抓)。
+    失败不阻断主流程 (已有快照仍可用), 仅打印警告。
+    """
+    print("\n===========================================================")
+    print("  Step 0 (hltv rank): 更新 HLTV 世界排名快照 (增量)")
+    print("===========================================================")
+    try:
+        import importlib
+        hltv_rank = importlib.import_module("hltv rank")
+        scraped, skipped, failed = hltv_rank.crawl_yearly_rankings()
+        print(f"  -> 新抓 {scraped}, 已存在跳过 {skipped}, 失败 {failed}")
+        if failed:
+            print("  (部分周未抓到 — 可能是 HLTV 未发布, 不影响后续使用已有多数快照)")
+        return True
+    except Exception as e:
+        print(f"警告: 更新排名快照失败 (将使用已有快照继续): {e}")
+        return False
+
+
+# ----------------------------------------------------------------------
+# 3.
 # (Step 1) 真实数据抓取 (保持不变)
 # ----------------------------------------------------------------------
 
@@ -176,7 +210,7 @@ def run_step1_scrape_data():
         keyword = ">" 
         
         try:
-            driver = uc.Chrome(version_main=147)
+            driver = uc.Chrome(version_main=152, browser_executable_path="/usr/bin/google-chrome-stable")
             driver.get(url)
             try:
                 WebDriverWait(driver, timeout).until(EC.presence_of_element_located((By.CLASS_NAME, "event-world-rank")))
@@ -247,14 +281,25 @@ def run_step1_scrape_data():
                 game_total_rating = re.findall('<td class="rating text-center rating(.*?)<', content)
                 
                 stage_match_raw = re.findall('preformatted-text">(.*?)</', content, re.DOTALL)
-                
-                if not stage_match_raw: match_stage = "Groups"
-                elif "Online" in stage_match_raw[0] or "online" in stage_match_raw[0]: match_stage = "Online" 
-                elif "Quarter-final" in stage_match_raw[0]: match_stage = "Quarter-final"
-                elif "Semi-final" in stage_match_raw[0]: match_stage = "Semi-final"
-                elif "Grand final" in stage_match_raw[0]: match_stage = "Grand final"
-                elif "3rd place" in stage_match_raw[0]: match_stage = "3rd place"
-                else: match_stage = "Groups"
+
+                # 阶段判定: HLTV 阶段文本大小写不统一 ("Semi-final" / "semi-final"),
+                # 且小组赛标记行也可能含阶段字样 (如 "Group B upper bracket final. Winner
+                # advances to the playoff semi-finals"), 故按 "* 标记行" 判定并跳过 Group/Swiss 行.
+                stage_marker = stage_match_raw[0] if stage_match_raw else ""
+                if "online" in stage_marker.lower():
+                    match_stage = "Online"
+                else:
+                    match_stage = "Groups"
+                    for line in stage_marker.split("\n"):
+                        line = line.strip()
+                        if not line.startswith("*"): continue
+                        marker = line.lstrip("* ").strip()
+                        if re.match(r"^(group|swiss|round)\b", marker, re.IGNORECASE): continue
+                        low = marker.lower()
+                        if "grand final" in low: match_stage = "Grand final"; break
+                        if "semi-final" in low: match_stage = "Semi-final"; break
+                        if "quarter-final" in low: match_stage = "Quarter-final"; break
+                        if "3rd place" in low: match_stage = "3rd place"; break
 
                 for idx in range(len(game_total_rating)):
                     game_total_rating[idx] = game_total_rating[idx].split(keyword, 1)[-1].strip()
@@ -366,13 +411,11 @@ def run_step1_scrape_data():
 
 def run_step2_calculate_global_stats():
     print("\n===========================================================")
-    print("  运行 Step 2 (来自 1.py): 计算全局统计数据")
+    print("  运行 Step 2 (新算法 evp_experiment obj=107.03): 计算全局统计数据")
     print("===========================================================")
 
-    all_player_summary_dataframes = [] 
-    all_event_scores_for_saving = {} 
-
-    # 尝试读取外部独立脚本计算好的赛事含金量表
+    # 尝试读取外部独立脚本计算好的赛事含金量表 (保留: 赛事权重)
+    all_event_scores_for_saving = {}
     try:
         if os.path.exists(event_score_file_path):
             df_scores = pd.read_excel(event_score_file_path, index_col=0)
@@ -382,446 +425,296 @@ def run_step2_calculate_global_stats():
         print(f"加载 'event_scores_lookup.xlsx' 失败: {e}")
         all_event_scores_for_saving = {}
 
-    print("\n--- (Step 2 - Pass 1) 正在循环所有赛事以收集 *并处理* 分数 ---")
-    
+    # 用新算法逐赛事计算选手总分 (total_score), 收集全局分布用于 z_score
+    import statistics
+    all_scores = []
+    all_group_rounds = []
+    n_events = 0
+    group_stages = evp_exp.EVP_CONFIG["GROUP_STAGES"]
+
     for url in event_urls:
         event_id = get_event_id_from_url(url)
         current_event_name = url.split('/')[-1]
-        
-        if not event_id: continue
-        
-        print(f"\n--- (Step 2 - Pass 1) 正在处理: {current_event_name} ---")
-
+        if not event_id:
+            continue
         raw_data_path = os.path.join(base_directory, event_id, f"raw_event_{event_id}_data.xlsx")
-        
         if not os.path.exists(raw_data_path):
             print(f"错误: 原始数据文件 '{raw_data_path}' 未找到。跳过。")
             continue
 
-        try:
-            df = pd.read_excel(raw_data_path)
-            
-            if 'round_differential' not in df.columns:
-                df['round_differential'] = 0
-            
-            df['stage_weight_value'] = df['match_stage'].apply(lambda x: stage_weight_map.get(x, 1.0))
-            df['rank_weight'] = df['opponent_rank'].apply(get_rank_weight)
-            df['match_weight'] = df['stage_weight_value'] * df['rank_weight']
-            
-            df['perf_score_raw'] = df.apply(
-                lambda row: calculate_performance_score(
-                    row['rating'],
-                    row['stage_weight_value'],
-                    row['rank_weight'],
-                    row['team_avg_rating'],
-                    row['match_baseline_rating'],
-                    row['round_differential'] 
-                ),
-                axis=1
-            )
-            
-            df['perf_score_weighted'] = df['perf_score_raw'] * df['total_rounds']
-            df['weighted_rounds'] = df['total_rounds']
-            
-            df_playoffs = df[df['match_stage'].isin(PLAYOFF_STAGES)].copy()
-            df_groups = df[~df['match_stage'].isin(PLAYOFF_STAGES)].copy()
+        print(f"\n--- (Step 2) 正在处理: {current_event_name} (新算法) ---")
+        summary, _bo_all, map_all, _details = evp_exp.run_experiment(raw_data_path, None, None, save=False)
+        all_scores.extend(summary["total_score"].tolist())
+        grp = map_all.loc[map_all["match_stage"].isin(group_stages), "total_rounds"]
+        all_group_rounds.extend(grp.tolist())
+        n_events += 1
+        if current_event_name not in all_event_scores_for_saving:
+            print(f"警告: 未在查找表中找到 {current_event_name} 的赛事含金量。请确保运行了权重计算脚本。")
+            all_event_scores_for_saving[current_event_name] = 0.0
 
-            if not df_groups.empty:
-                summary_groups = df_groups.groupby('player').agg(
-                    group_score_uncapped=('perf_score_weighted', 'sum'),
-                    group_weighted_rounds_played=('weighted_rounds', 'sum') 
-                )
-            else:
-                summary_groups = pd.DataFrame(columns=['player', 'group_score_uncapped', 'group_weighted_rounds_played']).set_index('player')
-
-            if not df_playoffs.empty:
-                summary_playoffs = df_playoffs.groupby('player').agg(
-                    playoff_score=('perf_score_weighted', 'sum'),
-                    playoff_weighted_rounds_played=('weighted_rounds', 'sum')
-                )
-            else:
-                summary_playoffs = pd.DataFrame(columns=['player', 'playoff_score', 'playoff_weighted_rounds_played']).set_index('player')
-
-            player_summary = pd.concat([summary_groups, summary_playoffs], axis=1).fillna(0)
-            
-            event_average_group_rounds = player_summary['group_weighted_rounds_played'].mean()
-            if event_average_group_rounds == 0 or pd.isna(event_average_group_rounds):
-                event_average_group_rounds = 1.0 
-
-            player_summary['player_length_coefficient'] = player_summary['group_weighted_rounds_played'] / event_average_group_rounds
-            player_summary['applied_power'] = POWER_BOOST
-            player_summary.loc[player_summary['player_length_coefficient'] > 1.0, 'applied_power'] = POWER_PENALTY
-            
-            player_summary['player_length_coefficient'] = player_summary['player_length_coefficient'].replace(0, 1.0) 
-            player_summary['normalization_factor'] = (
-                player_summary['player_length_coefficient'] ** player_summary['applied_power']
-            )
-            
-            player_summary['normalized_group_score'] = player_summary['group_score_uncapped'] / player_summary['normalization_factor']
-            player_summary['normalized_playoff_score'] = player_summary['playoff_score']
-
-            player_summary['normalized_group_score_capped'] = player_summary['normalized_group_score'].apply(
-                lambda x: apply_symmetrical_soft_cap(x, GROUP_STAGE_SCORE_CAP)
-            )
-
-            player_summary['normalized_score'] = player_summary['normalized_group_score_capped'] + player_summary['normalized_playoff_score']
-            all_player_summary_dataframes.append(player_summary)
-            
-            # --- [赛事含金量获取] ---
-            # 权重计算逻辑已单独提取至独立脚本
-            if current_event_name in all_event_scores_for_saving:
-                print(f"已加载外部计算的赛事含金量: {all_event_scores_for_saving[current_event_name]:.4f}")
-            else:
-                print(f"警告: 未在查找表中找到 {current_event_name} 的赛事含金量。请确保运行了权重计算脚本。")
-                all_event_scores_for_saving[current_event_name] = 0.0
-            
-        except Exception as e:
-            print(f"错误: 处理 {raw_data_path} 失败: {e}")
-            continue
-
-    global_stats_calculated = {}
-
-    print("\n--- (Step 2 - Pass 2 & 3) 正在计算 *全局* 统计 ---")
-    if not all_player_summary_dataframes:
-        return False, None, None 
+    if all_scores:
+        mean_score = float(statistics.mean(all_scores))
+        std_score = float(statistics.pstdev(all_scores)) if len(all_scores) > 1 else 1.0
+        mean_group_rounds = float(statistics.mean(all_group_rounds)) if all_group_rounds else 1.0
     else:
-        global_df = pd.concat(all_player_summary_dataframes) 
-        
-        global_average_group_rounds = global_df['group_weighted_rounds_played'].mean()
-        if global_average_group_rounds == 0: global_average_group_rounds = 1.0
+        mean_score, std_score, mean_group_rounds = 0.0, 1.0, 1.0
 
-        global_mean_score = 0 
-        global_std_dev_score = global_df['normalized_score'].std()
+    stats_data = {
+        "global_mean_performance_score": mean_score,
+        "global_std_dev_performance_score": std_score,
+        "global_average_group_rounds_played": mean_group_rounds,
+        "total_player_records_processed": len(all_scores),
+        "total_events_processed": n_events,
+    }
+    try:
+        with open(output_stats_file, "w") as f:
+            json.dump(stats_data, f, indent=4)
+    except Exception as e:
+        print(f"保存 global_stats.json 失败: {e}")
+        return False, None, None
 
-        stats_data = {
-            "global_mean_performance_score": global_mean_score,
-            "global_std_dev_performance_score": global_std_dev_score,
-            "global_average_group_rounds_played": global_average_group_rounds, 
-            "total_player_records_processed": int(global_df['normalized_score'].count()),
-            "total_events_processed": len(all_player_summary_dataframes)
-        }
-        global_stats_calculated = stats_data 
-        
-        try:
-            with open(output_stats_file, 'w') as f:
-                json.dump(stats_data, f, indent=4)
-        except Exception as e:
-            print(f"保存 global_stats.json 失败: {e}")
-            return False, None, None 
+    print(f"\nStep 2 执行完毕。全局 mean={mean_score:.4f} std={std_score:.4f} (新算法 total_score)")
+    return True, stats_data, all_event_scores_for_saving
 
-    print("\nStep 2 执行完毕。")
-    return True, global_stats_calculated, all_event_scores_for_saving
+
+
 
 
 # ----------------------------------------------------------------------
-# 5. 
-# (Step 3) EVP 计算与汇总 (保持不变)
+# 4. 
+# (Step 3) EVP 计算与汇总 (新算法 evp_experiment, 保留赛事含金量 + 输出结构)
 # ----------------------------------------------------------------------
+
 
 def run_step3_calculate_evp_pivot():
     print("\n===========================================================")
-    print("  运行 Step 3 (来自 hltv evp.py): 计算EVP并生成汇总")
+    print("  运行 Step 3 (新算法 evp_experiment obj=107.03): 计算EVP并生成汇总")
     print("===========================================================")
 
+    # 赛事含金量 (保留: 赛事权重, weighted_evp_score = evp_score × event_score)
     manual_event_scores_map = {}
-    
     try:
         if os.path.exists(event_score_file_path):
-            df_scores = pd.read_excel(event_score_file_path, index_col=0) 
-            manual_event_scores_map = df_scores['event_score'].to_dict()
+            df_scores = pd.read_excel(event_score_file_path, index_col=0)
+            manual_event_scores_map = df_scores["event_score"].to_dict()
     except Exception:
-        manual_event_scores_map = {} 
+        manual_event_scores_map = {}
 
+    # 全局分布 (新算法 total_score 的 mean/std, 供 z_score)
     global_stats = {}
-    GLOBAL_MEAN_SCORE = 0.0  
-    GLOBAL_STD_DEV_SCORE = 1.0 
-
+    GLOBAL_MEAN_SCORE = 0.0
+    GLOBAL_STD_DEV_SCORE = 1.0
     try:
-        with open(output_stats_file, 'r') as f:
+        with open(output_stats_file, "r") as f:
             global_stats = json.load(f)
-        GLOBAL_MEAN_SCORE = 0.0
-        GLOBAL_STD_DEV_SCORE = global_stats.get("global_std_dev_performance_score", 1.0)
-    except:
-        return 
+        GLOBAL_MEAN_SCORE = global_stats.get("global_mean_performance_score", 0.0) or 0.0
+        GLOBAL_STD_DEV_SCORE = global_stats.get("global_std_dev_performance_score", 1.0) or 1.0
+    except Exception:
+        pass
 
-    all_events_summary_list = [] 
+    all_events_summary_list = []
+    group_stages = evp_exp.EVP_CONFIG["GROUP_STAGES"]
 
     for webstart in event_urls:
-
         event_id = get_event_id_from_url(webstart)
-        if not event_id: continue 
-        
-        current_event_name = webstart.split('/')[-1]
+        if not event_id:
+            continue
+        current_event_name = webstart.split("/")[-1]
         print(f"\n--- (Step 3) 正在处理: {current_event_name} ---")
 
         target_directory = os.path.join(base_directory, event_id)
         raw_data_file_path = os.path.join(target_directory, f"raw_event_{event_id}_data.xlsx")
         evp_summary_file_path = os.path.join(target_directory, f"event_{event_id}_evp_summary.xlsx")
-
-        if not os.path.exists(raw_data_file_path): continue
-
-        df = pd.read_excel(raw_data_file_path)
-        all_player_raw_stats = df.to_dict('records')
+        if not os.path.exists(raw_data_file_path):
+            continue
 
         current_event_score = manual_event_scores_map.get(current_event_name, 0.0)
         print(f"加载赛事含金量: {current_event_score:.4f}")
 
-        if 'round_differential' not in df.columns:
-            df['round_differential'] = 0
+        # ---- 新算法计算 (替换旧 calculate_performance_score 汇总逻辑) ----
+        summary, bo_all, map_all, _details = evp_exp.run_experiment(
+            raw_data_file_path, None, None, save=False)
 
-        df['stage_weight_value'] = df['match_stage'].apply(lambda x: stage_weight_map.get(x, 1.0))
-        df['rank_weight'] = df['opponent_rank'].apply(get_rank_weight)
-        
-        df['perf_score_raw'] = df.apply(
-            lambda row: calculate_performance_score(
-                row['rating'],
-                row['stage_weight_value'], 
-                row['rank_weight'],       
-                row['team_avg_rating'],
-                row['match_baseline_rating'],
-                row['round_differential'] 
-            ),
-            axis=1
-        )
-        
-        df['perf_score_weighted'] = df['perf_score_raw'] * df['total_rounds']
-        df['weighted_rounds'] = df['total_rounds']
-        
-        df_playoffs = df[df['match_stage'].isin(PLAYOFF_STAGES)].copy()
-        df_groups = df[~df['match_stage'].isin(PLAYOFF_STAGES)].copy()
-
-        if not df_groups.empty:
-            summary_groups = df_groups.groupby('player').agg(
-                group_score_uncapped=('perf_score_weighted', 'sum'),
-                group_weighted_rounds_played=('weighted_rounds', 'sum') 
-            )
+        # ---- 保留: EVP_Summary 列结构 (值来自新算法) ----
+        s = summary.copy()
+        s["evp_score"] = s["total_score"]
+        s["normalized_score"] = s["total_score"]
+        if GLOBAL_STD_DEV_SCORE and GLOBAL_STD_DEV_SCORE > 0:
+            s["z_score"] = (s["total_score"] - GLOBAL_MEAN_SCORE) / GLOBAL_STD_DEV_SCORE
         else:
-            summary_groups = pd.DataFrame(columns=['player', 'group_score_uncapped', 'group_weighted_rounds_played']).set_index('player')
+            s["z_score"] = 0.0
+        s["weighted_evp_score"] = s["evp_score"] * current_event_score
 
-        if not df_playoffs.empty:
-            summary_playoffs = df_playoffs.groupby('player').agg(
-                playoff_score=('perf_score_weighted', 'sum'),
-                playoff_weighted_rounds_played=('weighted_rounds', 'sum')
-            )
-        else:
-            summary_playoffs = pd.DataFrame(columns=['player', 'playoff_score', 'playoff_weighted_rounds_played']).set_index('player')
+        s["Raw_Group_Score"] = s["group_bo_total"]
+        s["Raw_Playoff_Score"] = s["playoff_bo_total"]
+        s["Norm_Group_Score"] = s["group_effective"]
+        s["Norm_Group_Score_Scaled"] = s["group_soft_capped"]
+        s["Norm_Playoff_Score"] = s["playoff_soft_capped"]
 
-        player_summary = pd.concat([summary_groups, summary_playoffs], axis=1).fillna(0)
-        
-        player_summary['total_weighted_score'] = player_summary['group_score_uncapped'] + player_summary['playoff_score']
-        player_summary['total_weighted_rounds_played'] = player_summary['group_weighted_rounds_played'] + player_summary['playoff_weighted_rounds_played']
+        # 保留: 加权回合数列 (按阶段对单图回合数求和)
+        m = map_all.copy()
+        m["is_group"] = m["match_stage"].isin(group_stages)
+        grp_rounds = m[m["is_group"]].groupby("player")["total_rounds"].sum()
+        po_rounds = m[~m["is_group"]].groupby("player")["total_rounds"].sum()
+        s = s.merge(grp_rounds.rename("group_weighted_rounds_played"), on="player", how="left")
+        s = s.merge(po_rounds.rename("playoff_weighted_rounds_played"), on="player", how="left")
+        s["group_weighted_rounds_played"] = s["group_weighted_rounds_played"].fillna(0).astype(int)
+        s["playoff_weighted_rounds_played"] = s["playoff_weighted_rounds_played"].fillna(0).astype(int)
+        s["total_weighted_rounds_played"] = s["group_weighted_rounds_played"] + s["playoff_weighted_rounds_played"]
+        s["total_weighted_score"] = s["Raw_Group_Score"] + s["Raw_Playoff_Score"]
 
-        event_average_group_rounds = player_summary['group_weighted_rounds_played'].mean()
-        if event_average_group_rounds == 0: event_average_group_rounds = 1.0 
+        cols = ["player", "evp_score", "weighted_evp_score", "z_score", "normalized_score",
+                "Norm_Group_Score_Scaled", "Norm_Playoff_Score", "Norm_Group_Score",
+                "Raw_Group_Score", "Raw_Playoff_Score", "group_weighted_rounds_played",
+                "playoff_weighted_rounds_played", "total_weighted_score", "total_weighted_rounds_played"]
+        player_summary_reset = s.sort_values("evp_score", ascending=False)[cols].copy()
+        player_summary_reset["evp_score"] = player_summary_reset["evp_score"].round(4)
+        player_summary_reset["weighted_evp_score"] = player_summary_reset["weighted_evp_score"].round(4)
+        player_summary_reset["z_score"] = player_summary_reset["z_score"].round(4)
+        player_summary_reset["normalized_score"] = player_summary_reset["normalized_score"].round(4)
 
-        player_summary['player_length_coefficient'] = player_summary['group_weighted_rounds_played'] / event_average_group_rounds
-            
-        player_summary['applied_power'] = POWER_BOOST
-        player_summary.loc[player_summary['player_length_coefficient'] > 1.0, 'applied_power'] = POWER_PENALTY
-        
-        player_summary['player_length_coefficient'] = player_summary['player_length_coefficient'].replace(0, 1.0) 
-        player_summary['normalization_factor'] = (
-            player_summary['player_length_coefficient'] ** player_summary['applied_power']
-        )
-
-        player_summary['normalized_group_score'] = player_summary['group_score_uncapped'] / player_summary['normalization_factor']
-        player_summary['normalized_playoff_score'] = player_summary['playoff_score']
-
-        player_summary['normalized_group_score_capped'] = player_summary['normalized_group_score'].apply(
-            lambda x: apply_symmetrical_soft_cap(x, GROUP_STAGE_SCORE_CAP)
-        )
-
-        player_summary['normalized_score'] = player_summary['normalized_group_score_capped'] + player_summary['normalized_playoff_score']
-        
-        if 'player_length_coefficient' in player_summary.columns:
-            columns_to_drop = ['player_length_coefficient', 'applied_power', 'normalization_factor']
-            player_summary = player_summary.drop(columns=[c for c in columns_to_drop if c in player_summary.columns])
-        
-        player_summary = player_summary.rename(columns={
-            'group_score_uncapped': 'Raw_Group_Score',
-            'playoff_score': 'Raw_Playoff_Score',
-            'normalized_group_score_capped': 'Norm_Group_Score_Scaled',
-            'normalized_group_score': 'Norm_Group_Score', 
-            'normalized_playoff_score': 'Norm_Playoff_Score' 
-        })
-        
-        if GLOBAL_STD_DEV_SCORE == 0 or pd.isna(GLOBAL_STD_DEV_SCORE):
-            player_summary['evp_score'] = 0
-            player_summary['z_score'] = 0
-        else:
-            player_summary['z_score'] = player_summary['normalized_score'].apply(
-                lambda score: (score - GLOBAL_MEAN_SCORE) / GLOBAL_STD_DEV_SCORE
-            )
-            player_summary['evp_score'] = player_summary['z_score'].apply(
-                 lambda z_score: BASIC_EVP_POINT + math.copysign(1, z_score) * MULTIPLE_EVP_POINT * math.log1p(abs(z_score))
-            )
-        
-        player_summary['evp_score'] = player_summary['evp_score'].apply(lambda x:x)
-
-        player_summary = player_summary.sort_values(by='evp_score', ascending=False)
-        player_summary['total_weighted_score'] = player_summary['total_weighted_score'].round(4) 
-        player_summary['normalized_score'] = player_summary['normalized_score'].round(4)
-        player_summary['evp_score'] = player_summary['evp_score'].round(4)
-
-        player_summary_reset = player_summary.reset_index() 
-        player_summary_reset['weighted_evp_score'] = player_summary_reset['evp_score'] * current_event_score
-        
         data_for_global = player_summary_reset.copy()
-        data_for_global['event_id'] = event_id
-        data_for_global['event_name'] = current_event_name
-        data_for_global['event_score'] = current_event_score
+        data_for_global["event_id"] = event_id
+        data_for_global["event_name"] = current_event_name
+        data_for_global["event_score"] = current_event_score
         all_events_summary_list.append(data_for_global)
 
-        print(f"--- 正在保存 *单个* 赛事EVP总结 (含每场详情): {evp_summary_file_path} ---")
+        # ---- 保留: Per_Map_Scores sheet (新算法单图给分 map_score) ----
+        pm = map_all[["player", "team", "opponent", "opponent_rank", "match_stage",
+                      "round_differential", "total_rounds", "rating"]].copy()
+        pm["perf_score_raw"] = map_all["map_score"]
+        pm["perf_score_weighted"] = map_all["map_score"] * map_all["total_rounds"]
+        pm = pm.round({"perf_score_raw": 6, "perf_score_weighted": 6})
+
+        # ---- 保留: 输出 event_{eid}_evp_summary.xlsx ----
+        print(f"--- 正在保存 *单个* 赛事EVP总结 (新算法 + 赛事含金量): {evp_summary_file_path} ---")
         try:
-            columns_to_save = [
-                'player', 'evp_score', 'weighted_evp_score', 'z_score',
-                'normalized_score', 
-                'Norm_Group_Score_Scaled', 'Norm_Playoff_Score', 
-                'Norm_Group_Score', 
-                'Raw_Group_Score', 'Raw_Playoff_Score',
-                'group_weighted_rounds_played', 'playoff_weighted_rounds_played', 
-                'total_weighted_score', 'total_weighted_rounds_played'
-            ]
-            existing_columns_to_save = [col for col in columns_to_save if col in player_summary_reset.columns]
-            
-            # [恢复] 地图详情 Sheet 保存逻辑
-            columns_for_match_sheet = [
-                'player', 'team', 'opponent', 'opponent_rank', 'match_stage', 
-                'round_differential', 
-                'total_rounds', 'rating', 
-                'perf_score_raw', 'perf_score_weighted'
-            ]
-            existing_match_cols = [col for col in columns_for_match_sheet if col in df.columns]
-            
-            df_match_details_to_save = df[existing_match_cols].copy()
-            
-            with pd.ExcelWriter(evp_summary_file_path, engine='openpyxl') as writer:
-                player_summary_reset.to_excel(
-                    writer, 
-                    index=False, 
-                    sheet_name=f"EVP_Summary_{event_id}",
-                    columns=existing_columns_to_save
-                )
-                df_match_details_to_save.to_excel(
-                    writer,
-                    index=False,
-                    sheet_name="Per_Map_Scores" 
-                )
-
+            with pd.ExcelWriter(evp_summary_file_path, engine="openpyxl") as writer:
+                player_summary_reset.to_excel(writer, index=False, sheet_name=f"EVP_Summary_{event_id}")
+                pm.to_excel(writer, index=False, sheet_name="Per_Map_Scores")
             print(f"成功保存总结和地图详情到: {evp_summary_file_path}")
-
         except Exception as e:
             print(f"错误: 保存 *单个* 赛事EVP总结文件失败: {e}")
 
-
-    # --- 5.3. (Step 3) 汇总所有赛事并保存为数据透视表 ---
+    # ---- 保留: 全局透视表 (evp_score × 赛事, EVENT_SCORE 行, 列排序) ----
     print("\n===========================================================")
     print("(Step 3) 所有赛事处理完毕。正在汇总所有数据...")
-
     if not all_events_summary_list:
         print("未收集到任何赛事数据。")
     else:
         global_summary_df = pd.concat(all_events_summary_list, ignore_index=True)
         print("正在创建EVP分数的数据透视表 (Pivoting data)...")
-        
         try:
-            values_to_pivot = ['evp_score', 'weighted_evp_score']
-            
+            values_to_pivot = ["evp_score", "weighted_evp_score"]
             pivot_df = pd.pivot_table(
-                global_summary_df,
-                values=values_to_pivot,
-                index=['player'],
-                columns=['event_name'],
-                aggfunc='mean'
-            )
-
+                global_summary_df, values=values_to_pivot,
+                index=["player"], columns=["event_name"], aggfunc="mean")
             try:
-                pivot_df[('Overall', 'Sum_Weighted_EVP')] = pivot_df['weighted_evp_score'].sum(axis=1)
-                pivot_df = pivot_df.sort_values(by=('Overall', 'Sum_Weighted_EVP'), ascending=False)
-            except KeyError as e:
+                pivot_df[("Overall", "Sum_Weighted_EVP")] = pivot_df["weighted_evp_score"].sum(axis=1)
+                pivot_df = pivot_df.sort_values(by=("Overall", "Sum_Weighted_EVP"), ascending=False)
+            except KeyError:
                 try:
-                    fallback_sort_col = pivot_df['weighted_evp_score'].columns[0]
-                    pivot_df = pivot_df.sort_values(by=('weighted_evp_score', fallback_sort_col), ascending=False)
-                except Exception: pass 
+                    fallback_sort_col = pivot_df["weighted_evp_score"].columns[0]
+                    pivot_df = pivot_df.sort_values(by=("weighted_evp_score", fallback_sort_col), ascending=False)
+                except Exception:
+                    pass
 
-            event_scores_map = manual_event_scores_map 
-            event_score_row = pd.DataFrame(columns=pivot_df.columns, index=['EVENT_SCORE'])
-            
+            event_scores_map = manual_event_scores_map
+            event_score_row = pd.DataFrame(columns=pivot_df.columns, index=["EVENT_SCORE"])
             for event_name in event_scores_map.keys():
-                if ('evp_score', event_name) in event_score_row.columns:
-                    event_score_row.loc['EVENT_SCORE', ('evp_score', event_name)] = event_scores_map.get(event_name, 0)
-            
-            if ('Overall', 'Sum_Weighted_EVP') in event_score_row.columns:
-                event_score_row[('Overall', 'Sum_Weighted_EVP')] = '---'
+                if ("evp_score", event_name) in event_score_row.columns:
+                    event_score_row.loc["EVENT_SCORE", ("evp_score", event_name)] = event_scores_map.get(event_name, 0)
+            if ("Overall", "Sum_Weighted_EVP") in event_score_row.columns:
+                event_score_row[("Overall", "Sum_Weighted_EVP")] = "---"
 
             pivot_df_final = pd.concat([event_score_row, pivot_df])
+            if "weighted_evp_score" in pivot_df_final.columns.get_level_values(0):
+                pivot_df_final = pivot_df_final.drop(columns="weighted_evp_score", level=0)
 
-            if 'weighted_evp_score' in pivot_df_final.columns.get_level_values(0):
-                pivot_df_final = pivot_df_final.drop(columns='weighted_evp_score', level=0)
-
-            # [恢复] 复杂的列排序逻辑
             new_columns = []
             for col_level0, col_level1 in pivot_df_final.columns:
-                if col_level0 == 'Overall':
-                    new_columns.append(col_level1) 
+                if col_level0 == "Overall":
+                    new_columns.append(col_level1)
                 else:
-                    new_columns.append(col_level1 if col_level1 else col_level0) 
+                    new_columns.append(col_level1 if col_level1 else col_level0)
             pivot_df_final.columns = new_columns
-            pivot_df_final.index.name = 'Player' 
-            pivot_df_final.columns.name = None 
+            pivot_df_final.index.name = "Player"
+            pivot_df_final.columns.name = None
 
-            event_name_order = [url.split('/')[-1] for url in event_urls]
+            event_name_order = [url.split("/")[-1] for url in event_urls]
             all_current_cols = pivot_df_final.columns.tolist()
             ordered_event_cols = [name for name in event_name_order if name in all_current_cols]
             overall_cols = [col for col in all_current_cols if col not in ordered_event_cols]
             final_column_order = ordered_event_cols + overall_cols
             pivot_df_final = pivot_df_final[final_column_order]
 
-            pivot_df_final = pivot_df_final.fillna(0) 
+            pivot_df_final = pivot_df_final.fillna(0)
             pivot_df_final = pivot_df_final.round(4)
-            if 'Sum_Weighted_EVP' in pivot_df_final.columns:
-                pivot_df_final.loc['EVENT_SCORE', 'Sum_Weighted_EVP'] = '---'
+            if "Sum_Weighted_EVP" in pivot_df_final.columns:
+                pivot_df_final.loc["EVENT_SCORE", "Sum_Weighted_EVP"] = "---"
 
             print(f"正在写入数据透视表到: {global_summary_file_path}")
             pivot_df_final.to_excel(global_summary_file_path, sheet_name="EVP_Pivot_Summary")
             print("成功。")
-
         except Exception as e:
             print(f"创建数据透视表错误: {e}")
             try:
-                backup_path = global_summary_file_path.replace('.xlsx', '_long_format_backup.xlsx')
+                backup_path = global_summary_file_path.replace(".xlsx", "_long_format_backup.xlsx")
                 global_summary_df.to_excel(backup_path, index=False)
                 print(f"已保存 'long format' 备份文件到: {backup_path}")
-            except: pass
+            except Exception:
+                pass
 
     print("\n===========================================================")
     print("  Step 3 执行完毕。")
     print("===========================================================")
 
 
-# ----------------------------------------------------------------------
-# 6. 
-# 脚本主入口
-# ----------------------------------------------------------------------
+def run_step1_5_calculate_event_scores():
+    """(Step 1.5, eventrank) 计算赛事含金量权重并刷新 event_scores_lookup.xlsx.
+
+    复用 eventrank.py 的参数化计算 (传入本脚本同一份配置),
+    实现 hltv evp.py 一站式: 爬虫 → 含金量 → 全局统计 → EVP.
+    """
+    print("\n===========================================================")
+    print("  Step 1.5 (eventrank): 计算赛事含金量 (赛事队伍总分 / 当期世界总得分)")
+    print("===========================================================")
+    try:
+        result = eventrank.calculate_all_event_weights(
+            event_urls_=event_urls, base_directory_=base_directory,
+            rank_db_directory_=rank_db_directory, event_score_file_path_=event_score_file_path)
+        print(f"  -> 共计算 {len(result)} 个赛事的含金量系数, 已写入 {event_score_file_path}")
+        return len(result) > 0
+    except Exception as e:
+        print(f"错误: 计算赛事含金量失败: {e}")
+        return False
+
 
 if __name__ == "__main__":
-    # 注意：现在的主流程是：
-    # 先运行主脚本，让它执行跑通一次 Step 1 爬取数据；
-    # 然后运行外部独立的 event_weight_calculator.py 生成权重表；
-    # 接着再运行主脚本跑通 Step 2 和 Step 3。
-    
+    # 注意: 主流程现已一站式:
+    # Step 0 更新排名快照 (hltv rank) → Step 1 爬取数据 → Step 1.5 赛事含金量 (eventrank)
+    #   → Step 2 全局统计 → Step 3 EVP 汇总
+    # (原先手动运行 hltv rank.py / event_weight_calculator.py 的环节均已集成)
+
+    run_step0_update_rank()
+
     step1_success = run_step1_scrape_data()
-    
-    step2_success = False
+
+    step1_5_success = False
     if step1_success:
-        step2_success, _, _ = run_step2_calculate_global_stats()
+        step1_5_success = run_step1_5_calculate_event_scores()
     else:
         print("错误: Step 1 失败。")
 
+    step2_success = False
+    if step1_5_success:
+        step2_success, _, _ = run_step2_calculate_global_stats()
+    else:
+        print("错误: Step 1.5 (赛事含金量计算) 失败, 跳过 Step 2/3。")
+
     if step2_success:
         run_step3_calculate_evp_pivot()
-    elif step1_success: 
+    elif step1_5_success:
         print("错误: Step 2 失败。")
-        
+
     print("\n所有分析步骤已执行完毕。")

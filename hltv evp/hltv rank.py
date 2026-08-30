@@ -6,7 +6,9 @@ import undetected_chromedriver as uc
 from openpyxl import Workbook
 
 # --- 1. 准备工作 ---
-base_save_dir = "database/rank"
+# 用脚本所在位置推导 database/rank 的绝对路径, 避免从不同 cwd 运行时相对路径错位
+_HERE = os.path.dirname(os.path.abspath(__file__))
+base_save_dir = os.path.join(os.path.dirname(_HERE), "database", "rank")
 
 # --- 2. URL 生成函数 (增加了特例处理) ---
 def get_all_mondays_urls(year: int):
@@ -94,17 +96,38 @@ def scrape_single_rank_page(driver, url, date_obj, base_save_dir):
         return False
 
 # --- 4. 年度周排名全量爬取主入口 ---
-def crawl_yearly_rankings(year=2026, base_save_dir=base_save_dir, chrome_version=148):
+def crawl_yearly_rankings(year=2026, base_save_dir=base_save_dir, chrome_version=152,
+                          browser_executable_path="/usr/bin/google-chrome-stable", only_missing=True):
+    """增量/全量爬取年度周排名快照.
+
+    only_missing=True (默认): 只爬『已发布(日期<=今天)且本地缺失』的周一快照,
+    已存在的跳过 — 每次运行只补新周, 已最新时秒过 (0 新抓)。
+    chrome_version / browser_executable_path 对齐 hltv evp.py Step1 的 Chrome 配置。
+    返回: (scraped, skipped, failed).
+    """
     if not os.path.exists(base_save_dir):
         os.makedirs(base_save_dir)
-    driver = uc.Chrome(version_main=chrome_version)
+    driver = uc.Chrome(version_main=chrome_version, browser_executable_path=browser_executable_path)
+    today = datetime.date.today()
+    scraped = skipped = failed = 0
     try:
         target_dates, hltv_urls = get_all_mondays_urls(year)
         for date_obj, url in zip(target_dates, hltv_urls):
-            scrape_single_rank_page(driver, url, date_obj, base_save_dir)
+            if date_obj > today:
+                continue  # 未来周 (HLTV 尚未发布), 跳过
+            file_path = os.path.join(base_save_dir, f"{date_obj.strftime('%Y-%m-%d')}.xlsx")
+            if only_missing and os.path.exists(file_path):
+                skipped += 1
+                continue
+            if scrape_single_rank_page(driver, url, date_obj, base_save_dir):
+                scraped += 1
+            else:
+                failed += 1
     finally:
         driver.quit()
         print("所有任务完成。")
+    print(f"增量结果: 新抓 {scraped}, 已存在跳过 {skipped}, 失败 {failed}")
+    return scraped, skipped, failed
 
 if __name__ == "__main__":
     crawl_yearly_rankings()
