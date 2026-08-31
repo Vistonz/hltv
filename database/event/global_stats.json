@@ -1,7 +1,7 @@
 {
-    "global_mean_performance_score": 1.309500792751982,
-    "global_std_dev_performance_score": 2.702691352884652,
-    "global_average_group_rounds_played": 21.452380952380953,
-    "total_player_records_processed": 883,
-    "total_events_processed": 12
+    "global_mean_performance_score": 1.043033135534373,
+    "global_std_dev_performance_score": 2.4753833207663125,
+    "global_average_group_rounds_played": 25.026447198076568,
+    "total_player_records_processed": 15841,
+    "total_events_processed": 255
 }
