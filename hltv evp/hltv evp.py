@@ -20,26 +20,8 @@ import eventrank
 # 全局配置区
 # ----------------------------------------------------------------------
 
-# !! 必须与 Step 1 (爬虫) 脚本中的列表保持一致 !!
-event_urls = [
-    "https://www.hltv.org/events/8246/blast-bounty-2026-season-1-finals",
-    "https://www.hltv.org/events/8240/iem-krakw-2026",
-    "https://www.hltv.org/events/8047/pgl-cluj-napoca-2026",
-    "https://www.hltv.org/events/8412/EPL-S23",
-    "https://www.hltv.org/events/8248/blast-open-rotterdam-2026",
-    "https://www.hltv.org/events/8048/pgl-bucharest-2026",
-    "https://www.hltv.org/events/8242/iem-rio-2026",
-    "https://www.hltv.org/events/8250/blast-rivals-2026-season-1",
-    "https://www.hltv.org/events/8049/pgl-astana-2026",
-    "https://www.hltv.org/events/8243/iem-atlanta-2026",
-    "https://www.hltv.org/events/8263/cs-asia-championships-2026",
-    "https://www.hltv.org/events/8301/iem-cologne-major-2026"
-]
-
-eventfilter = [
-    "&event=8246",
-    "&event=8240","&event=8047","&event=8413","&event=8248","&event=8048","&event=8242","&event=8250","&event=8049","&event=8243","&event=8263","&event=8301"
-]
+# 赛事名单: event_urls / eventfilter 不再写死, 改从 MVP 名单 (database/event/mvp_events.xlsx)
+# 加载 (见下方 _load_mvp_event_urls), 失败时回退到内置 12 个 2026 赛事.
 
 # (回合) 长度归一化参数 (幂)
 POWER_PENALTY = 1
@@ -55,6 +37,60 @@ base_directory = "/home/hongbin/Desktop/hltv/database/event"
 rank_db_directory = "/home/hongbin/Desktop/hltv/database/rank"
 # 赛事日期映射文件路径 (已提取到独立权重脚本中使用)
 # date_mapping_file = "/home/hongbin/Desktop/hltv/hltv evp/副本2025年各赛事使用的HLTV排名日期.xlsx"
+
+# ----------------- [MVP 赛事名单加载] -----------------
+# MVP 名单 (2026-08-31 起): 从 HLTV stats/events?matchType=MvpEvents 提取全部 MVP 赛事,
+# 完整 URL (含 slug) 由 Camoufox 抓取重定向后的真实 URL 写入 mvp_events.xlsx 的 url 列.
+# 名单按 offset 抓取顺序排列 (时间从新到旧), Step1 遇到第一个早于 RANK_START_DATE 的赛事即 break,
+# 其后的更旧赛事不再爬取.
+RANK_START_DATE = "2015-10-01"          # HLTV 战队排名起始日 (2015-10-01 起才有周快照)
+MVP_LIST_FILE = os.path.join(base_directory, "mvp_events.xlsx")
+
+# 内置回退: 原写死的 12 个 2026 赛事 (名单文件缺失/无 url 列时保证脚本仍可独立运行)
+_DEFAULT_EVENT_URLS = [
+    "https://www.hltv.org/events/8246/blast-bounty-2026-season-1-finals",
+    "https://www.hltv.org/events/8240/iem-krakw-2026",
+    "https://www.hltv.org/events/8047/pgl-cluj-napoca-2026",
+    "https://www.hltv.org/events/8412/EPL-S23",
+    "https://www.hltv.org/events/8248/blast-open-rotterdam-2026",
+    "https://www.hltv.org/events/8048/pgl-bucharest-2026",
+    "https://www.hltv.org/events/8242/iem-rio-2026",
+    "https://www.hltv.org/events/8250/blast-rivals-2026-season-1",
+    "https://www.hltv.org/events/8049/pgl-astana-2026",
+    "https://www.hltv.org/events/8243/iem-atlanta-2026",
+    "https://www.hltv.org/events/8263/cs-asia-championships-2026",
+    "https://www.hltv.org/events/8301/iem-cologne-major-2026"
+]
+_DEFAULT_EVENTFILTER = [
+    "&event=8246",
+    "&event=8240","&event=8047","&event=8413","&event=8248","&event=8048","&event=8242","&event=8250","&event=8049","&event=8243","&event=8263","&event=8301"
+]
+
+
+def _load_mvp_event_urls():
+    """从 MVP 名单 (mvp_events.xlsx) 加载完整赛事 URL 列表与过滤参数.
+
+    要求名单含 'url' (完整 URL, 时间新→旧) 与 'event_id' 列;
+    失败时回退到内置 12 个 2026 赛事, 保证脚本仍可独立运行.
+    返回: (event_urls, eventfilter).
+    """
+    try:
+        df = pd.read_excel(MVP_LIST_FILE)
+        if "url" not in df.columns:
+            raise ValueError("名单缺少 url 列")
+        urls = df["url"].dropna().astype(str).tolist()
+        ids = df["event_id"].dropna().astype(int).tolist()
+        if not urls:
+            raise ValueError("名单 url 列为空")
+        filters = [f"&event={int(i)}" for i in ids[:len(urls)]]
+        print(f"[名单] 已从 MVP 名单加载 {len(urls)} 个赛事 (新→旧顺序): {MVP_LIST_FILE}")
+        return urls, filters
+    except Exception as e:
+        print(f"[名单] 警告: 加载 MVP 名单失败 ({e}), 回退到内置 12 个 2026 赛事")
+        return _DEFAULT_EVENT_URLS, _DEFAULT_EVENTFILTER
+
+
+event_urls, eventfilter = _load_mvp_event_urls()
 
 # (文件路径)
 output_stats_file = os.path.join(base_directory, "global_stats.json")
@@ -92,6 +128,23 @@ def get_event_id_from_url(url):
     if match:
         return match.group(0)
     return None
+
+def ensure_driver(driver):
+    """探测 driver 是否仍可用 (窗口未关闭); 已关闭/崩溃则重建新实例.
+
+    与 hltv rank.py 同一策略: 长时间大量请求时 Chrome 窗口可能被系统/驱动关闭,
+    后续请求全打到死窗口 (no such window) 导致该赛事数据不全;
+    此处用轻量探测 (current_url) 在每次请求前确认窗口存活, 崩溃则自动重启."""
+    try:
+        driver.current_url  # 窗口关闭时此调用会抛异常
+        return driver
+    except Exception:
+        print("检测到浏览器窗口已关闭, 正在重启 Chrome...")
+        try:
+            driver.quit()
+        except Exception:
+            pass
+        return uc.Chrome(version_main=152, browser_executable_path="/usr/bin/google-chrome-stable")
 
 def get_rank_weight(opponent_rank):
     weight = BASE_WEIGHT_C + (RANK_K / (opponent_rank + 5))
@@ -183,6 +236,7 @@ def run_step1_scrape_data():
     print("===========================================================")
         
     all_events_scraped_successfully = True
+    failed_events = []  # 单赛事失败不阻断全流程, 由断点续跑机制下次补齐
     driver = None
 
     for i, url in enumerate(event_urls):
@@ -218,6 +272,7 @@ def run_step1_scrape_data():
             
             content = driver.page_source
 
+            event_start_date = None  # 用于 MVP 名单范围控制 (早于排名起始则 break)
             # --- [新增] 提取赛事开始时间 ---
             try:
                 # 寻找 <td class="eventdate"><span data-unix="1771066800000">...</span></td>
@@ -239,6 +294,15 @@ def run_step1_scrape_data():
                 print(f"  -> 提取日期时出错: {e}")
             # -------------------------------
 
+            # --- [MVP 名单范围控制] 早于排名起始日期的赛事不抓取, 并停止后续更旧赛事 ---
+            # 名单按 offset 抓取顺序排列 (时间从新到旧), 故遇到第一个 < RANK_START_DATE 的
+            # 赛事后, 其后的赛事全部更旧, 直接 break 省去无效爬取 (2015-10 之前无 HLTV 排名,
+            # 含金量/排名均无法匹配).
+            if event_start_date and event_start_date < RANK_START_DATE:
+                print(f"  -> 赛事开始 {event_start_date} 早于排名起始 {RANK_START_DATE}, 跳过并停止后续更旧赛事")
+                break
+            # -------------------------------------------------------
+
             team_name = re.findall('<div class="text">(.*?)<',content)
             team_rank_raw = re.findall('<div class="event-world-rank" title=".*?">#(.*?)<', content)
             team_rank_clean = [r for r in team_rank_raw if r.isdigit()]
@@ -252,6 +316,7 @@ def run_step1_scrape_data():
             filter_param = current_filter.lstrip('&') 
             webnext = f"https://www.hltv.org/results?{filter_param}"
             
+            driver = ensure_driver(driver)  # 崩溃自动重建 (长时爬取窗口可能被杀)
             driver.get(webnext)
             try:
                 WebDriverWait(driver, timeout).until(EC.presence_of_element_located((By.CLASS_NAME, "a-reset")))
@@ -268,6 +333,7 @@ def run_step1_scrape_data():
             for j, link in enumerate(Game_link):
                 match_url = 'https://www.hltv.org' + link
                 print(f"\n--- 正在处理比赛 {j + 1}/{len(Game_link)} ---")
+                driver = ensure_driver(driver)  # 崩溃自动重建 (每场请求前探测)
                 driver.get(match_url)
                 try:
                     WebDriverWait(driver, timeout).until(EC.visibility_of_element_located((By.CLASS_NAME, "statsPlayerName")))
@@ -389,18 +455,21 @@ def run_step1_scrape_data():
                     print(f"原始数据保存成功，共 {len(df_raw_save)} 条。")
                 except Exception as e:
                     print(f"保存原始数据失败: {e}")
-                    all_events_scraped_successfully = False
+                    failed_events.append(current_event_name)
             else:
                 print(f"警告：赛事 {current_event_name} 未抓取到数据。")
-                all_events_scraped_successfully = False
+                failed_events.append(current_event_name)
 
         except Exception as e:
             print(f"严重错误: {e}")
-            all_events_scraped_successfully = False
+            failed_events.append(current_event_name)
         
         finally:
             if driver: driver.quit()
             
+    if failed_events:
+        print(f"警告: Step1 有 {len(failed_events)} 个赛事失败, 已记录待补齐: {failed_events}")
+        print("(raw 缺失的赛事会被 Step1.5/2/3 自动跳过; 重跑 Step1 时断点续跑自动补齐)")
     return all_events_scraped_successfully
 
 

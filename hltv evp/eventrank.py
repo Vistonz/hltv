@@ -6,7 +6,19 @@ import pandas as pd
 # ----------------------------------------------------------------------
 # 1. 全局配置区
 # ----------------------------------------------------------------------
-event_urls = [
+# 赛事名单: event_urls 与 hltv evp.py 同源, 从 MVP 名单 (database/event/mvp_events.xlsx)
+# 加载 (见下方 _load_mvp_event_urls), 失败时回退到内置 12 个 2026 赛事.
+# 注意: 仅独立运行本脚本时使用; hltv evp.py 一站式会传入同一份 event_urls 覆盖.
+
+base_directory = "/home/hongbin/Desktop/hltv/database/event"
+rank_db_directory = "/home/hongbin/Desktop/hltv/database/rank"
+event_score_file_path = os.path.join(base_directory, "event_scores_lookup.xlsx")
+
+# ---------------- [MVP 赛事名单加载 (与 hltv evp.py 同源)] ----------------
+MVP_LIST_FILE = os.path.join(base_directory, "mvp_events.xlsx")
+
+# 内置回退: 原写死的 12 个 2026 赛事 (名单文件缺失/无 url 列时保证脚本仍可独立运行)
+_DEFAULT_EVENT_URLS = [
     "https://www.hltv.org/events/8246/blast-bounty-2026-season-1-finals",
     "https://www.hltv.org/events/8240/iem-krakw-2026",
     "https://www.hltv.org/events/8047/pgl-cluj-napoca-2026",
@@ -21,9 +33,28 @@ event_urls = [
     "https://www.hltv.org/events/8301/iem-cologne-major-2026"
 ]
 
-base_directory = "/home/hongbin/Desktop/hltv/database/event"
-rank_db_directory = "/home/hongbin/Desktop/hltv/database/rank"
-event_score_file_path = os.path.join(base_directory, "event_scores_lookup.xlsx")
+
+def _load_mvp_event_urls():
+    """从 MVP 名单 (mvp_events.xlsx) 加载完整赛事 URL 列表.
+
+    要求名单含 'url' 列 (完整 URL, 时间新→旧);
+    失败时回退到内置 12 个 2026 赛事, 保证脚本仍可独立运行.
+    """
+    try:
+        df = pd.read_excel(MVP_LIST_FILE)
+        if "url" not in df.columns:
+            raise ValueError("名单缺少 url 列")
+        urls = df["url"].dropna().astype(str).tolist()
+        if not urls:
+            raise ValueError("名单 url 列为空")
+        print(f"[名单] 已从 MVP 名单加载 {len(urls)} 个赛事 (新→旧顺序): {MVP_LIST_FILE}")
+        return urls
+    except Exception as e:
+        print(f"[名单] 警告: 加载 MVP 名单失败 ({e}), 回退到内置 12 个 2026 赛事")
+        return _DEFAULT_EVENT_URLS
+
+
+event_urls = _load_mvp_event_urls()
 
 PLAYOFF_STAGES = ["Grand final", "Semi-final", "Quarter-final", "3rd place"]
 SPLIT_EVENT_KEYWORDS = ["bounty", "Final"]
