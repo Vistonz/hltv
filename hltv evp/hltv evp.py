@@ -723,7 +723,28 @@ def run_step3_calculate_evp_pivot():
                 pivot_df_final.loc["EVENT_SCORE", "Sum_Weighted_EVP"] = "---"
 
             print(f"正在写入数据透视表到: {global_summary_file_path}")
-            pivot_df_final.to_excel(global_summary_file_path, sheet_name="EVP_Pivot_Summary")
+            with pd.ExcelWriter(global_summary_file_path, engine="openpyxl") as writer:
+                pivot_df_final.to_excel(writer, sheet_name="EVP_Pivot_Summary")
+
+                # ---- 新增: 赛事权重子表 (含金量从高到低) ----
+                try:
+                    weights_df = pd.read_excel(event_score_file_path)
+                    weights_df = weights_df.rename(columns={"event_name": "slug"})
+                    # join MVP 名单拿可读赛事名与 event_id
+                    mvp_df = pd.read_excel(MVP_LIST_FILE)
+                    mvp_df["slug"] = mvp_df["url"].astype(str).str.split("/").str[-1]
+                    info = mvp_df[["event_id", "event_name", "slug"]].drop_duplicates("slug")
+                    weights_df = weights_df.merge(info, on="slug", how="left")
+                    weights_df["event_name"] = weights_df["event_name"].fillna(weights_df["slug"])
+                    weights_df = weights_df.sort_values("event_score", ascending=False).reset_index(drop=True)
+                    weights_df.insert(0, "Rank", range(1, len(weights_df) + 1))
+                    wcols = [c for c in ["Rank", "event_id", "event_name", "event_score"]
+                             if c in weights_df.columns]
+                    weights_df = weights_df[wcols]
+                    weights_df.to_excel(writer, index=False, sheet_name="赛事权重")
+                    print(f"已写入赛事权重子表 ({len(weights_df)} 个赛事, 含金量降序)")
+                except Exception as e:
+                    print(f"警告: 写赛事权重子表失败: {e}")
             print("成功。")
         except Exception as e:
             print(f"创建数据透视表错误: {e}")
