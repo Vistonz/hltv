@@ -11,10 +11,13 @@
   - in_topn (核心): 官方名单成员 ⊆ 算法 top N (N = 官方人数)
   - mvp_ok: 官方 MVP == 算法第1
   - ordered: 仅对 (新闻有序 且 与详情页集合一致) 的赛事: 官方名单[i] ∈ 算法 top[:i+1]
-  - mismatch 分数差: 漏选 + 挤占 的累计分差 (每赛事平均, 仅报告不再计入 obj)
+  - line_mismatch (分年代绝对线判据, 2026-09-01 用户定案三档线):
+      ≤2023→4.0, 2024→4.5, ≥2025→5.0. 每赛事:
+      hi = 官方入选最低分, lo = 官方落选最高分,
+      e_mis = max(0, line−hi) + max(0, lo−line). 全 0 = 线以上的人都入选、线以下都没入选.
 
-obj = W_in*in_topn*100 + W_ord*ordered*100 + W_mvp*mvp_ok*100
-      (mismatch 已停用: 老赛事评分尺度与近两年不统一, 跨年代分数差不可比, 用户 2026-08-31 拍板移除)
+obj = W_in*in_topn*100 + W_ord*ordered*100 + W_mvp*mvp_ok*100 − W_MIS*line_mismatch
+      (mismatch 曾停用: 跨年代分数尺度不统一 → 改用分年代线吸收官方标准迁移, 2026-09-01 加回)
 """
 import json
 import os
@@ -34,7 +37,9 @@ SLUG2NICK = "/tmp/slug2nick.json"
 
 # 新 obj 权重 (mismatch 已停用, 见 docstring)
 # 2026-08-31 用户指令: MVP 预测正确翻倍加分 → W_MVP 0.2 → 0.4
-W_ORD, W_IN, W_MVP = 1.0, 0.5, 0.4
+# 2026-08-31 晚: in_topn 权重加满 → W_IN 0.5 → 1.0
+W_ORD, W_IN, W_MVP = 1.0, 1.0, 0.4
+W_MIS = 0.1   # 分年代线 mismatch 惩罚权重 (2026-09-01: 0.5→0.2→0.1, 命中主导/mismatch 弱约束)
 
 # 差异过大的新闻有序赛事 (详情页为准, 不参与 ordered 指标, 但仍参与 in_topn/mvp/mismatch)
 # 由 extract_all_lists.py 对比自动标出到 /tmp/discard_ordered.json; 此处可覆盖.
@@ -56,6 +61,8 @@ def norm_name(s):
 
 
 def load_slug2nick():
+    if not os.path.exists(SLUG2NICK):
+        return {}  # /tmp 清理后缺失: 主策略 (slug 归一化直接匹配) 仍可用, 仅缺昵称变体补充
     return {s: {norm_name(n) for n in nicks}
             for s, nicks in json.load(open(SLUG2NICK)).items()}
 
@@ -173,23 +180,22 @@ def eval_cfg(cfg, cache, official, ordered, slug2nick, discard_ordered=None,
         mvp_tot += 1
         if official_players and official_players[0] == df["player"].iloc[0]:
             mvp_ok_n += 1
-        # mismatch 分数差
+        # line_mismatch: 分年代绝对线判据 (官方入选最低 ≥ 线 ≥ 官方落选最高)
         scores = dict(zip(df["player"], df["total_score"]))
         in_names = set(official_players)
-        algo_topN = topN
-        off_scores = [scores[p] for p in official_players if p in scores]
-        algo_scores = [scores[p] for p in algo_topN]
+        out_names = set(df["player"]) - in_names
+        line = year_line(_event_year(eid))
         e_mis = 0.0
-        if off_scores:
-            off_min = min(off_scores)
-            for p in algo_topN - in_names:
-                if scores[p] > off_min:
-                    e_mis += scores[p] - off_min
-            if len(algo_scores) >= N:
-                lineN = min(algo_scores)
-                for p in in_names - algo_topN:
-                    if scores[p] < lineN:
-                        e_mis += lineN - scores[p]
+        if in_names:
+            hi = min(scores[p] for p in in_names if p in scores)
+            e_mis += max(0.0, line - hi)
+        else:
+            hi = None
+        if out_names:
+            lo = max(scores[p] for p in out_names if p in scores)
+            e_mis += max(0.0, lo - line)
+        else:
+            lo = None
         mis_sum += e_mis
         # ordered (新闻有序 且 与详情页一致 且 未被剔除)
         # 新闻存昵称, 详情页存 slug → 经 slug2nick 变体把新闻昵称映射为实际选手.
@@ -200,10 +206,11 @@ def eval_cfg(cfg, cache, official, ordered, slug2nick, discard_ordered=None,
         ord_i = ord_t = 0
         if eid in ordered and eid not in discard_ordered:
             news_seq = ordered[eid]
-            # 昵称变体 → 实际选手 (来自本赛事详情 slug 的变体集)
+            # 昵称变体 → 实际选手. 最可靠变体是 raw summary 的 player 昵称本身 (几乎=slug),
+            # slug2nick (/tmp 可清理) 只作补充变体. 2026-09-01 改为不依赖 /tmp.
             nick2player = {}
             for s, p in slug_map.items():
-                for n in slug2nick.get(s, ()):
+                for n in ([p] + list(slug2nick.get(s, ()))):
                     nl = norm_name(n)
                     if nl:
                         nick2player.setdefault(nl, set()).add(p)
@@ -237,15 +244,15 @@ def eval_cfg(cfg, cache, official, ordered, slug2nick, discard_ordered=None,
             "official": N, "matched": len(official_players),
             "topN_ok": sum(1 for p in official_players if p in topN),
             "ordered": ord_i / ord_t if ord_t else None,
-            "miss": e_mis,
+            "miss": e_mis, "line": line, "hi": hi, "lo": lo,
         }
     in_v = in_hit / in_tot if in_tot else 0
     ord_v = ord_hit / ord_tot if ord_tot else 0
     mvp_v = mvp_ok_n / mvp_tot if mvp_tot else 0
     n_ev = len(per_event)
     mis_avg = mis_sum / n_ev if n_ev else 0
-    # mismatch 已停用 (跨年代分数尺度不统一, 用户 2026-08-31): 仅报告不进入 obj.
-    obj = W_ORD * ord_v * 100 + W_IN * in_v * 100 + W_MVP * mvp_v * 100
+    # line_mismatch 分年代线惩罚进入 obj (2026-09-01 加回).
+    obj = W_ORD * ord_v * 100 + W_IN * in_v * 100 + W_MVP * mvp_v * 100 - W_MIS * mis_sum
     return {"obj": obj, "in_topn": in_v, "in_hit": in_hit, "in_tot": in_tot,
             "ordered": ord_v, "ord_hit": ord_hit, "ord_tot": ord_tot,
             "mvp_ok": mvp_v, "mvp_n": mvp_ok_n, "mvp_tot": mvp_tot,
@@ -259,6 +266,35 @@ def eval_cfg(cfg, cache, official, ordered, slug2nick, discard_ordered=None,
 #   7907 自身无官方名单(不进评估集), 别名无双重计数.
 RAW_ALIAS = {7912: 7907}
 
+_YEAR_CACHE = {}
+
+
+def _event_year(eid):
+    """赛事年份 (meta start_date 前4位). 惰性缓存, 只首次读盘."""
+    if eid in _YEAR_CACHE:
+        return _YEAR_CACHE[eid]
+    src = RAW_ALIAS.get(eid, eid)
+    meta = os.path.join(BASE, str(src), f"event_{src}_meta.json")
+    year = None
+    try:
+        with open(meta, encoding="utf-8") as f:
+            year = int(json.load(f)["start_date"][:4])
+    except Exception:
+        pass
+    _YEAR_CACHE[eid] = year
+    return year
+
+
+def year_line(year):
+    """分年代 EVP 标准线 (2026-09-01 定案): ≤2023→4, 2024→4.5, ≥2025→5."""
+    if year is None:
+        return 5.0  # 未知年份按最新线保守
+    if year <= 2023:
+        return 4.0
+    if year == 2024:
+        return 4.5
+    return 5.0
+
 
 def load_cache(official):
     cache = {}
@@ -267,6 +303,7 @@ def load_cache(official):
         raw = os.path.join(BASE, str(src), f"raw_event_{src}_data.xlsx")
         if os.path.exists(raw):
             cache[eid] = pd.read_excel(raw)
+            _event_year(eid)  # 预填充年份缓存
     return cache
 
 
