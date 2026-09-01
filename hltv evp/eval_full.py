@@ -40,6 +40,11 @@ SLUG2NICK = "/tmp/slug2nick.json"
 # 2026-08-31 晚: in_topn 权重加满 → W_IN 0.5 → 1.0
 W_ORD, W_IN, W_MVP = 1.0, 1.0, 0.4
 W_MIS = 0.1   # 分年代线 mismatch 惩罚权重 (2026-09-01: 0.5→0.2→0.1, 命中主导/mismatch 弱约束)
+# ordered 距离加权 (2026-09-01 双向口径, 用户定): 每判定点 score = max(0, 1 - DIST_ALPHA·|d|)
+#   d = pos - (i+1) = 官方第 i 人在算法榜名次偏离理想位置的幅度; 提前/挤出对称惩罚.
+#   距离越远扣分越多; |d| ≥ 1/DIST_ALPHA 归零. 替代原二值"前缀包含"命中率.
+#   α=0.33: 差1名得0.67, 差2名得0.34, 差3名及以上归零 (用户 2026-09-01 定案).
+DIST_ALPHA = 0.33
 
 # 差异过大的新闻有序赛事 (详情页为准, 不参与 ordered 指标, 但仍参与 in_topn/mvp/mismatch)
 # 由 extract_all_lists.py 对比自动标出到 /tmp/discard_ordered.json; 此处可覆盖.
@@ -146,6 +151,7 @@ def eval_cfg(cfg, cache, official, ordered, slug2nick, discard_ordered=None,
     discard_ordered = discard_ordered or set()
     in_hit = in_tot = 0
     ord_hit = ord_tot = 0
+    ord_dist = 0.0   # ordered 距离加权得分总和 (双向, 2026-09-01 新口径)
     mvp_ok_n = mvp_tot = 0
     mis_sum = 0.0
     per_event = {}
@@ -204,6 +210,7 @@ def eval_cfg(cfg, cache, official, ordered, slug2nick, discard_ordered=None,
         #   B) 新闻集合 == 详情页 EVP 集合 → [详情MVP] + [新闻EVP顺序] (老赛事纯EVP)
         #   否则 (新闻含非官方成员如 7732 的 'im', 名单不一致) → 不参与 ordered.
         ord_i = ord_t = 0
+        ord_dist_e = 0.0   # 本赛事距离加权得分和 (双向, 每点 max(0, 1-DIST_ALPHA·|d|))
         if eid in ordered and eid not in discard_ordered:
             news_seq = ordered[eid]
             # 昵称变体 → 实际选手. 最可靠变体是 raw summary 的 player 昵称本身 (几乎=slug),
@@ -234,27 +241,37 @@ def eval_cfg(cfg, cache, official, ordered, slug2nick, discard_ordered=None,
                 elif mapped_set == evp_players:
                     seq = [official_players[0]] + mapped  # B: MVP前置 + 新闻EVP顺序
             if seq:
+                rank_of = {p: i + 1 for i, p in enumerate(df["player"])}
                 for i, p in enumerate(seq):
                     ord_t += 1
+                    pos = rank_of.get(p)
+                    if pos is None:
+                        continue  # 官方人在算法榜缺位, 不计
+                    d = pos - (i + 1)
+                    ord_dist_e += max(0.0, 1.0 - DIST_ALPHA * abs(d))
                     if p in set(df["player"].head(i + 1)):
                         ord_i += 1
         ord_hit += ord_i
         ord_tot += ord_t
+        ord_dist += ord_dist_e
         per_event[str(eid)] = {
             "official": N, "matched": len(official_players),
             "topN_ok": sum(1 for p in official_players if p in topN),
+            "mvp_ok": 1 if official_players and official_players[0] == df["player"].iloc[0] else 0,
             "ordered": ord_i / ord_t if ord_t else None,
+            "ord_hit": ord_i, "ord_tot": ord_t,
             "miss": e_mis, "line": line, "hi": hi, "lo": lo,
         }
     in_v = in_hit / in_tot if in_tot else 0
-    ord_v = ord_hit / ord_tot if ord_tot else 0
+    ord_v = ord_dist / ord_tot if ord_tot else 0   # 距离加权率 (新口径) 替代二值命中率
     mvp_v = mvp_ok_n / mvp_tot if mvp_tot else 0
     n_ev = len(per_event)
     mis_avg = mis_sum / n_ev if n_ev else 0
     # line_mismatch 分年代线惩罚进入 obj (2026-09-01 加回).
     obj = W_ORD * ord_v * 100 + W_IN * in_v * 100 + W_MVP * mvp_v * 100 - W_MIS * mis_sum
     return {"obj": obj, "in_topn": in_v, "in_hit": in_hit, "in_tot": in_tot,
-            "ordered": ord_v, "ord_hit": ord_hit, "ord_tot": ord_tot,
+            "ordered": ord_v, "ord_dist": ord_dist,
+            "ord_hit": ord_hit, "ord_tot": ord_tot,
             "mvp_ok": mvp_v, "mvp_n": mvp_ok_n, "mvp_tot": mvp_tot,
             "mismatch": mis_sum, "n_ev": n_ev, "per_event": per_event}
 
