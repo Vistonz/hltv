@@ -222,7 +222,9 @@ def process_sorted_player_rankings_final(input_file_path, output_folder):
 # ==========================================
 # 执行区域
 # ==========================================
-desktop_path = os.path.join(os.path.expanduser("~"), 'Desktop')
-input_excel_path = os.path.join(desktop_path, 'hltv', 'hltv year', 'rating2026.xlsx')
+# 输入输出路径 (Linux, 该仓库仅在 Arch 上运行; 原 Windows 拼接路径已改为绝对路径)
+input_excel_path = '/home/hongbin/Desktop/hltv/hltv year/rating2026.xlsx'
+output_folder = '/home/hongbin/Desktop/hltv/hltv top'
 
-process_sorted_player_rankings_final(input_excel_path, desktop_path+'\\hltv\\hltv top')
+if __name__ == "__main__":
+    process_sorted_player_rankings_final(input_excel_path, output_folder)

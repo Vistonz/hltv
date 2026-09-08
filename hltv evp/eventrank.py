@@ -21,8 +21,8 @@ event_urls = [
     "https://www.hltv.org/events/8301/iem-cologne-major-2026"
 ]
 
-base_directory = "C:\\Users\\10725\\Desktop\\hltv\\database\\event"
-rank_db_directory = "C:\\Users\\10725\\Desktop\\hltv\\database\\rank"
+base_directory = "/home/hongbin/Desktop/hltv/database/event"
+rank_db_directory = "/home/hongbin/Desktop/hltv/database/rank"
 event_score_file_path = os.path.join(base_directory, "event_scores_lookup.xlsx")
 
 PLAYOFF_STAGES = ["Grand final", "Semi-final", "Quarter-final", "3rd place"]

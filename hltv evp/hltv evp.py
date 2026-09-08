@@ -44,16 +44,16 @@ UPPER_POWER = 1.2
 
 # ----------------- [路径配置] -----------------
 # 基础路径
-base_directory = "C:\\Users\\10725\\Desktop\\hltv\\database\\event"
+base_directory = "/home/hongbin/Desktop/hltv/database/event"
 # 排名数据库路径
-rank_db_directory = "C:\\Users\\10725\\Desktop\\hltv\\database\\rank"
+rank_db_directory = "/home/hongbin/Desktop/hltv/database/rank"
 # 赛事日期映射文件路径 (已提取到独立权重脚本中使用)
-# date_mapping_file = "C:\\Users\\10725\\Desktop\\hltv\\hltv evp\\副本2025年各赛事使用的HLTV排名日期.xlsx"
+# date_mapping_file = "/home/hongbin/Desktop/hltv/hltv evp/副本2025年各赛事使用的HLTV排名日期.xlsx"
 
 # (文件路径)
 output_stats_file = os.path.join(base_directory, "global_stats.json")
 event_score_file_path = os.path.join(base_directory, "event_scores_lookup.xlsx")
-global_summary_file_path = os.path.join("C:\\Users\\10725\\Desktop\\hltv\\hltv evp", "global_evp_pivot_summary.xlsx")
+global_summary_file_path = os.path.join("/home/hongbin/Desktop/hltv/hltv evp", "global_evp_pivot_summary.xlsx")
 
 # (权重和阶段定义)
 stage_weight_map = {
