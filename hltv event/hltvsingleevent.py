@@ -17,7 +17,7 @@ stagedate.append([99,99,99,99,99,9999]) #用于表尾判断预留
 minMapCountfilter="&minMapCount=0" # 图池数筛选器，更改数字使用
 minrating = 0 #大于此数的选手rating纳入统计
 
-file_path = os.path.join(f"/home/hongbin/Desktop/hltv/hltv event", "rating_group.xlsx") #表格文件保存路径，根据需要更改
+file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rating_group.xlsx") #表格文件保存路径，根据需要更改
 #用于填写表格的第一行
 #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 #用于填写表格的第一行
@@ -126,8 +126,8 @@ def scrape_single_event(
     Name = []
     Mapcount1 = re.findall('<td class="statsDetail">(.*?)</td>',content)
     Mapcount = []
-    Rating = re.findall('class="ratingCol(.*?)</td>',content)
-    Id = re.findall('<a href="/stats/players(.*?)" data-tooltip-id="uniqueTooltipId',content)
+    Rating = re.findall('<td class="ratingCol(.*?)</td>',content)
+    Id = re.findall(r'<a href="/stats/players(/\d+/[^"]*)" data-tooltip-id="uniqueTooltipId',content)
     Rounds = re.findall('<td class="statsDetail gtSmartphone-only">(.*?)</td>',content)
     Flag = re.findall('class="flag" title="(.*?)">',content)
     #名字和rating的数据清理
@@ -143,14 +143,14 @@ def scrape_single_event(
     driver.get(webfront+eventfilter+"&side=COUNTER_TERRORIST"+minMapCountfilter)
     content = driver.page_source
     CTname1 = re.findall('data-tooltip-id="uniqueTooltipId-(.*?)</a></td>',content)
-    CTrating = re.findall('class="ratingCol(.*?)</td>',content)
+    CTrating = re.findall('<td class="ratingCol(.*?)</td>',content)
     CTflag = re.findall('class="flag" title="(.*?)">',content)
     #T
     time.sleep(0.6657)
     driver.get(webfront+eventfilter+"&side=TERRORIST"+minMapCountfilter)
     content = driver.page_source
     Tname1 = re.findall('data-tooltip-id="uniqueTooltipId-(.*?)</a></td>',content)
-    Trating = re.findall('class="ratingCol(.*?)</td>',content)
+    Trating = re.findall('<td class="ratingCol(.*?)</td>',content)
     Tflag = re.findall('class="flag" title="(.*?)">',content)
     tempzz = 0
     CTname = []
@@ -160,7 +160,7 @@ def scrape_single_event(
     driver.get(webfront+"/openingkills"+eventfilter+minMapCountfilter)
     content = driver.page_source
     ok = re.findall('class="statsDetail">(.*?)</td>',content)
-    Openingkillrating = re.findall('class="ratingCol(.*?)</td>',content)
+    Openingkillrating = re.findall('<td class="ratingCol(.*?)</td>',content)
     Openingkillname1 = re.findall('data-tooltip-id="uniqueTooltipId-(.*?)</a></td>',content)
     Openingkillflag = re.findall('class="flag" title="(.*?)">',content)
     Openingkillname = []
@@ -180,7 +180,7 @@ def scrape_single_event(
     driver.get(webfront+"/pistols"+eventfilter+minMapCountfilter)
     content = driver.page_source
     Pistolname1 = re.findall('data-tooltip-id="uniqueTooltipId-(.*?)</a></td>',content)
-    Pistolrating = re.findall('class="ratingCol(.*?)</td>',content)
+    Pistolrating = re.findall('<td class="ratingCol(.*?)</td>',content)
     Pistolflag = re.findall('class="flag" title="(.*?)">',content)
     Pistolname = []
 
@@ -238,29 +238,35 @@ def scrape_single_event(
         time.sleep(0.6657)
         content = driver.page_source
         #获取选手面板数据，rating已经统计不被需要
-        Playerstatform=re.findall('class="summaryStatBreakdownDataValue">(.*?)</div>',content)
-        #获取选手面板数据，rating已经统计不被需要
-        Playerstatform=re.findall('<div class="player-summary-stat-box-data traditionalData">(.*?)</div>',content)
-        DPR = Playerstatform[0]
+        _trad_raw = re.findall(r'<div class="player-summary-stat-box-data traditionalData">(.*?)</div>', content)
+        _eco_raw = re.findall(r'<div class="player-summary-stat-box-data ecoAdjustedData hidden">(.*?)</div>', content)
+        _clean_stat = lambda s: re.sub(r'<[^>]+>', '', s).replace('%', '').strip()
+        _trad = [_clean_stat(x) for x in _trad_raw]
+        _eco = [_clean_stat(x) for x in _eco_raw]
+
+        _rs_raw = re.findall(r'<div class="player-summary-stat-box-data">([^<]*)<span class="', content)
+        RS = _rs_raw[0].replace('%', '').strip() if _rs_raw else "-"
+
+        DPR = _trad[0] if len(_trad) > 0 else "-"
+        KAST = _trad[1] if len(_trad) > 1 else "-"
+        ADR = _trad[3] if len(_trad) > 3 else "-"
+        KPR = _trad[4] if len(_trad) > 4 else "-"
+
+        DPRE = _eco[0] if len(_eco) > 0 else "-"
+        KASTE = _eco[1] if len(_eco) > 1 else "-"
+        MULTIKILL = _eco[2] if len(_eco) > 2 else "-"
+        ADRE = _eco[3] if len(_eco) > 3 else "-"
+        KPRE = _eco[4] if len(_eco) > 4 else "-"
+
         row.append(DPR)
-        KAST=re.findall('<div class="player-summary-stat-box-data traditionalData">(.*?)<span',content)
-        row.append(KAST[0])
-        RS = re.findall('<div class="player-summary-stat-box-data">(.*?)<span class="',content)
-        row.append(RS[0])
-        ADR = Playerstatform[3]
+        row.append(KAST)
+        row.append(RS)
         row.append(ADR)
-        KPR = Playerstatform[4]
         row.append(KPR)
-        Playerstatform_eco=re.findall('<div class="player-summary-stat-box-data ecoAdjustedData hidden">(.*?)</div>',content)
-        DPRE = Playerstatform_eco[0]
         row.append(DPRE)
-        KASTE=re.findall('<div class="player-summary-stat-box-data ecoAdjustedData hidden">(.*?)<span',content)
-        row.append(KASTE[0])
-        MULTIKILL = Playerstatform_eco[2]
+        row.append(KASTE)
         row.append(MULTIKILL)
-        ADRE = Playerstatform_eco[3]
         row.append(ADRE)
-        KPRE = Playerstatform_eco[4]
         row.append(KPRE)
 
         kills = re.findall('Total kills</span><span>(.*?)</span></div>',content)
@@ -291,7 +297,7 @@ def scrape_single_event(
         attack_in_round = chartstat[72]
         winrate_1v1 = chartstat[81]
         livetime_perround_str = chartstat[84]
-        livetime = re.findall("\d+\.?\d*",livetime_perround_str)
+        livetime = re.findall(r"\d+\.?\d*",livetime_perround_str)
         livetime_perround = float(livetime[0])*60.0+float(livetime[1])
         snipkill_perround = chartstat[90]
         snipkill_percent = chartstat[93]
@@ -308,30 +314,30 @@ def scrape_single_event(
         clutching = charttotalstat[12]
         sniping = charttotalstat[15]
         utility = charttotalstat[18]
-        #统计选手对阵top5数据
-        VStop5maplist =   re.findall('vs top 5 opponents</div>\n                      <div class="rating-maps">(.*?)</div>',content)
-        VStop5map = VStop5maplist[0]
-        VStop5map = VStop5map.replace('(','')
-        VStop5map = VStop5map.replace(' maps)','')
-        row.append(VStop5map)
-        VStop5rating = re.findall('<div class="rating-value">(.*?)</div>\n                      <div class="rating-description">vs top 5 opponents',content)
-        row.append(VStop5rating[0])
-        #统计选手对阵top10数据
-        VStop10maplist = re.findall('vs top 10 opponents</div>\n                      <div class="rating-maps">(.*?)</div>',content)
-        VStop10map = VStop10maplist[0]
-        VStop10map = VStop10map.replace('(','')
-        VStop10map = VStop10map.replace(' maps)','')
-        row.append(VStop10map)
-        VStop10rating = re.findall('<div class="rating-value">(.*?)</div>\n                      <div class="rating-description">vs top 10 opponents',content)
-        row.append(VStop10rating[0])
-        #统计选手对阵top20数据
-        VStop20maplist = re.findall('vs top 20 opponents</div>\n                      <div class="rating-maps">(.*?)</div>',content)
-        VStop20map = VStop20maplist[0]
-        VStop20map = VStop20map.replace('(','')
-        VStop20map = VStop20map.replace(' maps)','')
-        row.append(VStop20map)
-        VStop20rating = re.findall('<div class="rating-value">(.*?)</div>\n                      <div class="rating-description">vs top 20 opponents',content)
-        row.append(VStop20rating[0])
+        #统计选手对阵top5/10/20数据
+        _breakdown_matches = re.findall(
+            r'<div class="rating-breakdown">\s*<div class="rating-value">([^<]*)</div>\s*<div class="rating-description">([^<]*)</div>\s*<div class="rating-maps">\s*\(([^<]*)\)\s*</div>',
+            content
+        )
+        _breakdown = {
+            desc.strip(): (val.strip(), maps.replace('maps', '').replace('map', '').strip())
+            for val, desc, maps in _breakdown_matches
+        }
+
+        # vs top 5
+        top5_val, top5_map = _breakdown.get("vs top 5 opponents", ("-", "0"))
+        row.append(top5_map)
+        row.append(top5_val)
+
+        # vs top 10
+        top10_val, top10_map = _breakdown.get("vs top 10 opponents", ("-", "0"))
+        row.append(top10_map)
+        row.append(top10_val)
+
+        # vs top 20
+        top20_val, top20_map = _breakdown.get("vs top 20 opponents", ("-", "0"))
+        row.append(top20_map)
+        row.append(top20_val)
 
         #进入individual界面，统计首杀数和回合击杀
         time.sleep(0.6657)
@@ -355,7 +361,7 @@ def scrape_single_event(
         driver.get(webfront+"/matches"+statsuffix)
         content = driver.page_source
 
-        singlemaprating = re.findall('"none">(.*?)</td>\n                  </tr>',content)
+        singlemaprating = re.findall(r'<td [^>]*data-sort-method="none">([0-9.]+)</td>\s*</tr>',content)
         singlemapround = re.findall(r'</span></a><span> \((.*?)\)</span></div>',content)
         #统计回家局数据
         singlemapoutdate = re.findall('00000">(.*?)</div>',content)#需要提取数字处理
@@ -384,7 +390,7 @@ def scrape_single_event(
         #数据集中处理
         for i in singlemaprating:
             singlemapout.append([float(i)])
-            date = re.findall("\d+\.?\d*", singlemapoutdate[tempzz5])
+            date = re.findall(r"\d+\.?\d*", singlemapoutdate[tempzz5])
             date = list(map(int,date))
             singlemapout[tempzz5].append(date[0])
             singlemapout[tempzz5].append(date[1])
@@ -525,41 +531,19 @@ def scrape_single_event(
         row.append(ratingabove130)
         row.append(ratingabove145)
 
-        #统计选手残局获胜次数
+        #统计选手残局获胜次数 (从 all 页面一次性提取 1v1 ~ 1v5)
         pattern = r"(/[0-9]+)"
         time.sleep(0.6657)
-        driver.get(webfront+"/clutches"+re.sub(pattern,r'\1'+"/1on1",statsuffix,1))
+        driver.get(webfront+"/clutches"+re.sub(pattern,r'\1'+"/all",statsuffix,1))
         content = driver.page_source
-        clutch1v1win = re.findall('<div class="value">(.*?)</div>',content)
-        time.sleep(0.6657)
-        driver.get(webfront+"/clutches"+re.sub(pattern,r'\1'+"/1on2",statsuffix,1))
-        content = driver.page_source
-        clutch1v2win = re.findall('<div class="value">(.*?)</div>',content)
-        time.sleep(0.6657)
-        driver.get(webfront+"/clutches"+re.sub(pattern,r'\1'+"/1on3",statsuffix,1))
-        content = driver.page_source
-        clutch1v3win = re.findall('<div class="value">(.*?)</div>',content)
-        time.sleep(0.6657)
-        driver.get(webfront+"/clutches"+re.sub(pattern,r'\1'+"/1on4",statsuffix,1))
-        content = driver.page_source
-        clutch1v4win = re.findall('<div class="value">(.*?)</div>',content)
-        time.sleep(0.6657)
-        driver.get(webfront+"/clutches"+re.sub(pattern,r'\1'+"/1on5",statsuffix,1))
-        content = driver.page_source
-        clutch1v5win = re.findall('<div class="value">(.*?)</div>',content)
-        time.sleep(0.6657)
-        if clutch1v5win[0] =="-":
-            clutch1v5win[0] = "0"
-        if clutch1v4win[0] =="-":
-            clutch1v4win[0] = "0"
-        if clutch1v3win[0] =="-":
-            clutch1v3win[0] = "0"
-        if clutch1v2win[0] =="-":
-            clutch1v2win[0] = "0"
-        if clutch1v1win[0] =="-":
-            clutch1v1win[0] = "0"
-        row.append(int(clutch1v5win[0])+int(clutch1v4win[0])+int(clutch1v3win[0])+int(clutch1v2win[0])+int(clutch1v1win[0]))
-        row.append( (float(clutch1v5win[0])*16.0+float(clutch1v4win[0])*8.0+float(clutch1v3win[0])*4.0+float(clutch1v2win[0])*2.0+float(clutch1v1win[0])) /float(rounds))
+        won_clutches = re.findall(r'class="won">Won</td>\s*<td[^>]*>1 on (\d)</td>', content)
+        c1v1 = won_clutches.count('1')
+        c1v2 = won_clutches.count('2')
+        c1v3 = won_clutches.count('3')
+        c1v4 = won_clutches.count('4')
+        c1v5 = won_clutches.count('5')
+        row.append(c1v5 + c1v4 + c1v3 + c1v2 + c1v1)
+        row.append((float(c1v5)*16.0 + float(c1v4)*8.0 + float(c1v3)*4.0 + float(c1v2)*2.0 + float(c1v1)*1.0) / float(rounds))
 
         row.append(kprw)
         row.append(singlemapoutround)

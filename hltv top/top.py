@@ -18,7 +18,7 @@ eventnamefilter = [
 ]
 
 # 2. 输出路径配置
-output_dir = r"/home/hongbin/Desktop/hltv/hltv top/2026 S1"
+output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "2026 S1")
 grade_filename = "grade.xlsx"
 
 # 3. 爬虫性能配置
@@ -120,8 +120,8 @@ def scrape_season_events(
         Name1 = re.findall('data-tooltip-id="uniqueTooltipId-(.*?)</a></td>', content)
         Mapcount1 = re.findall('<td class="statsDetail">(.*?)</td>', content)
         Team = re.findall('class="teamCol" data-sort="(.*?)"><', content)
-        Rating = re.findall('class="ratingCol(.*?)</td>', content)
-        Id = re.findall('<a href="/stats/players(.*?)" data-tooltip-id="uniqueTooltipId', content)
+        Rating = re.findall('<td class="ratingCol(.*?)</td>', content)
+        Id = re.findall(r'<a href="/stats/players(/\d+/[^"]*)" data-tooltip-id="uniqueTooltipId', content)
         Rounds = re.findall('<td class="statsDetail gtSmartphone-only">(.*?)</td>', content)
         Flag = re.findall('class="flag" title="(.*?)">', content)
         FlagURL = re.findall('" src="(.*?)" class="flag"',content)
@@ -132,7 +132,7 @@ def scrape_season_events(
         time.sleep(sleep_others)
         content = driver.page_source
         Team1 = re.findall('data-tooltip-id="uniqueTooltipId-(.*?)</a></td>', content)
-        Rating1 = re.findall('class="ratingCol(.*?)</td>', content)
+        Rating1 = re.findall('<td class="ratingCol(.*?)</td>', content)
         team_rating = {}
         for idx in range(len(Team1)):
             team_name = Team1[idx].split(keyword, 1)[-1].strip()
