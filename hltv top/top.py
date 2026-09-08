@@ -99,8 +99,8 @@ for i in eventfilter:
     Name1 = re.findall('data-tooltip-id="uniqueTooltipId-(.*?)</a></td>', content)
     Mapcount1 = re.findall('<td class="statsDetail">(.*?)</td>', content)
     Team = re.findall('class="teamCol" data-sort="(.*?)"><', content)
-    Rating = re.findall('class="ratingCol(.*?)</td>', content)
-    Id = re.findall('<a href="/stats/players(.*?)" data-tooltip-id="uniqueTooltipId', content)
+    Rating = re.findall('<td class="ratingCol(.*?)</td>', content)
+    Id = re.findall(r'<a href="/stats/players(/\d+/[^"]*)" data-tooltip-id="uniqueTooltipId', content)
     Rounds = re.findall('<td class="statsDetail gtSmartphone-only">(.*?)</td>', content)
     Flag = re.findall('class="flag" title="(.*?)">', content)
     FlagURL = re.findall('" src="(.*?)" class="flag"',content)
@@ -111,7 +111,7 @@ for i in eventfilter:
     time.sleep(sleep_others)
     content = driver.page_source
     Team1 = re.findall('data-tooltip-id="uniqueTooltipId-(.*?)</a></td>', content)
-    Rating1 = re.findall('class="ratingCol(.*?)</td>', content)
+    Rating1 = re.findall('<td class="ratingCol(.*?)</td>', content)
     team_rating = {}
     for idx in range(len(Team1)):
         team_name = Team1[idx].split(keyword, 1)[-1].strip()

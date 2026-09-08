@@ -25,11 +25,11 @@ except ImportError as exc:
 
 webfront="https://www.hltv.org/stats/players"
 
-eventfilter="?event=8876&event=8246&event=8575&event=8240&event=8047&event=8241&event=8412&event=8413&event=8248&event=8048&event=8242&event=8250&event=8049&event=8243&event=8263&event=9028&event=9029&event=8301&event=8914"
-bigeventfilter = "?&event=8246&event=8575&event=8240&event=8047&event=8413&event=8248&event=8242&event=8250&event=8049&event=8243&event=8301"
-eliteeventfilter = "?&event=8240&event=8876&event=8047&event=8248&event=8301&matchType=Lan"  
+eventfilter="?event=8876&event=8246&event=8575&event=8240&event=8047&event=8241&event=8412&event=8413&event=8248&event=8048&event=8242&event=8250&event=8049&event=8243&event=8263&event=9028&event=9029&event=8301&event=8914&event=8247&event=8261&event=8249"
+bigeventfilter = "?&event=8246&event=8575&event=8240&event=8047&event=8413&event=8248&event=8242&event=8250&event=8049&event=8243&event=8301&event=8247&event=8261&event=8249"
+eliteeventfilter = "?&event=8240&event=8876&event=8047&event=8248&event=8301&event=8261&event=8249&matchType=Lan"  
 supereliteeventfilter = "?&event=8240&event=8876&event=8301&matchType=Lan"
-arenafilter="?&event=8240&event=8876&event=8047&event=8413&event=8248&event=8242&event=8250&event=8049&event=8243&event=8301&playoffMatchType=PLAYOFFS&matchType=Lan"
+arenafilter="?&event=8240&event=8876&event=8047&event=8413&event=8248&event=8242&event=8250&event=8049&event=8243&event=8301&event=8247&event=8261&event=8249&playoffMatchType=PLAYOFFS&matchType=Lan"
 keyword = ">"   
 eliteeventplayofffilter = eliteeventfilter+"&playoffMatchType=PLAYOFFS"
 supereliteeventplayofffilter= supereliteeventfilter+"&playoffMatchType=PLAYOFFS"
@@ -42,26 +42,57 @@ file_path = os.path.join("C:\\Users\\10725\\Desktop\\hltv\\hltv year", "rating20
 
 wb = Workbook()
 ws = wb.active
-driver = uc.Chrome(version_main=149)
+driver = uc.Chrome(version_main=152)
 #用于填写表格的第一行
 description = ["选手ID","图池数","rating","rounds","CTrating","Trating","首杀尝试","首杀成功","首杀rating","手枪局rating","DPR","KAST","RS","ADR","KPR","DPR_eco","KAST_eco","MULTIKILL_eco","ADR_eco","KPR_eco","KD diff","map vs top5","rating vs top5","map vs top10","rating vs top10","map vs top20","rating vs top20","回合首杀数","Rounds with a kill","ROunds with a multikill","3+kill","0.85+","1.00+","1.15+","1.30+","1.45+","clutch win","clutch point per round","big event map","big event rating","elite event map","elite event rating","superelite event map","supereliteevent rating","big event playoff map","big event playoff rating","elite event playoff map","elite event playoff rating","superelite event playoff map","superelite event playoff rating","kill per round win","adr win","win after first kill","save per round lose","assist kill percentage","damage per kill","last alive percentage","kpr lose","adr lose","traded_kill","traded_death_percentage","flash_assist","utility_damage","firepower","entrying","trading","opening","clutching","sniping","utility","HS%","singlemapwinrating","traded_death","save_teammate","saved_by_teammate","support_round_percent","attack_in_round","winrate_1v1","livetime_perround","snipkill_perround","snipkill_percent","snipkillround_percent","utlility_kill_round","throw_flash_perround","time_opponent_flashed","traded_death_percentage","assist_per_round","arena map","arena rating","big event final map","big event final rating","avg_weaponvalve_perkill"]
+
+WEAPON_PRICES = {
+    "awp": 4750, "ak47": 2700, "m4a1": 2900, "m4a1_silencer": 2900,
+    "ssg08": 1700, "negev": 1700,
+    "usp_silencer": 200, "hkp2000": 200, "glock": 200, "usp_silencer_off": 200, "taser": 200,
+    "deagle": 700, "fiveseven": 500, "tec9": 500, "cz75a": 500, "revolver": 600,
+    "elite": 300, "p250": 300, "ump45": 1250, "mp9": 1250, "bizon": 1400,
+    "mp7": 1500, "mp5sd": 1500, "mag7": 1300, "galilar": 1800, "famas": 1950,
+    "aug": 3300, "sg556": 3000, "xm1014": 2000, "mac10": 1050, "nova": 1050,
+    "g3sg1": 2300, "scar20": 2300, "m249": 2300,
+}
 # 模块化
 def multi_event_scraper(s):
     driver.get(s)
     time.sleep(0.6657)              
     content = driver.page_source
-    namee = re.findall('data-tooltip-id="uniqueTooltipId-(.*?)</a></td>',content)
-    mapp = re.findall('</span></td>\n                    <td class="statsDetail">(.*?)</td>',content)
-    ratingg = re.findall('class="ratingCol(.*?)</td>',content)
-    return namee,mapp,ratingg
+    namee = []
+    mapp = []
+    ratingg = []
+    tbody_m = re.findall(r'<tbody[^>]*>(.*?)</tbody>', content, re.DOTALL)
+    if tbody_m:
+        rows = re.findall(r'<tr[^>]*>(.*?)</tr>', tbody_m[0], re.DOTALL)
+        for r in rows:
+            name_m = re.findall(r'<td class="playerCol[^"]*">.*?<a [^>]*>([^<]+)</a>', r)
+            details = re.findall(r'<td class="statsDetail">(.*?)</td>', r)
+            rating_m = re.findall(r'<td class="ratingCol[^"]*">([^<]+)</td>', r)
+            if name_m and details and rating_m:
+                namee.append(name_m[0].strip())
+                mapp.append(details[0].strip())
+                ratingg.append(rating_m[0].strip())
+    return namee, mapp, ratingg
 
 def inner_stats_scraper(s):
     driver.get(s) 
     time.sleep(0.6657)
     content = driver.page_source
-    namee = re.findall('data-tooltip-id="uniqueTooltipId-(.*?)</a></td>',content)
-    ratingg = re.findall('class="ratingCol(.*?)</td>',content)
-    return namee,ratingg
+    namee = []
+    ratingg = []
+    tbody_m = re.findall(r'<tbody[^>]*>(.*?)</tbody>', content, re.DOTALL)
+    if tbody_m:
+        rows = re.findall(r'<tr[^>]*>(.*?)</tr>', tbody_m[0], re.DOTALL)
+        for r in rows:
+            name_m = re.findall(r'<td class="playerCol[^"]*">.*?<a [^>]*>([^<]+)</a>', r)
+            rating_m = re.findall(r'<td class="ratingCol[^"]*">([^<]+)</td>', r)
+            if name_m and rating_m:
+                namee.append(name_m[0].strip())
+                ratingg.append(rating_m[0].strip())
+    return namee, ratingg
 
 import unicodedata
 
@@ -97,6 +128,8 @@ def upload_excel2(namee,ratingg):
         if name1 == name:
             upload_excel1(rating1)
             break
+    else:
+        upload_excel1("-")
 
 def upload_excel3(namee,mapp,ratingg):
     ishere = 0
@@ -118,10 +151,10 @@ player_data = dict()
 if os.path.exists(file_path):
     wb = load_workbook(file_path)
     ws = wb.active
-    for row in ws.iter_rows(min_row=1, values_only=True):  # 从第二行开始
-        name = row[0]
-        id = row[1]
-        player_data[name] = list(row)  # 将整行数据存储为列表
+    for row in ws.iter_rows(min_row=2, values_only=True):  # 从第二行开始跳过表头
+        if row and row[0] is not None:
+            name = str(row[0])
+            player_data[name] = list(row)  # 将整行数据存储为列表
 else:
     wb = Workbook()
     ws = wb.active
@@ -132,18 +165,27 @@ else:
 driver.get(webfront+eventfilter+minMapCountfilter) 
 time.sleep(30.6657) 
 content = driver.page_source 
-Name = re.findall('data-tooltip-id="uniqueTooltipId-(.*?)</a></td>',content)
-Mapcount = re.findall('</span></td>\n                    <td class="statsDetail">(.*?)</td>',content)
-Rating = re.findall('class="ratingCol(.*?)</td>',content)
-Id = re.findall('<a href="/stats/players(.*?)" data-tooltip-id="uniqueTooltipId',content)
-Rounds = re.findall('<td class="statsDetail gtSmartphone-only">(.*?)</td>',content)
+Name = []
+Mapcount = []
+Rating = []
+Id = []
+Rounds = []
 
-#名字和rating的数据清理
-tempzz = 0
-while tempzz < len(Name):
-    Name[tempzz]=Name[tempzz].split(keyword, 1)[-1].strip()
-    Rating[tempzz]=Rating[tempzz].split(keyword, 1)[-1].strip()
-    tempzz = tempzz + 1
+tbody_m = re.findall(r'<tbody[^>]*>(.*?)</tbody>', content, re.DOTALL)
+if tbody_m:
+    rows = re.findall(r'<tr[^>]*>(.*?)</tr>', tbody_m[0], re.DOTALL)
+    for r in rows:
+        name_m = re.findall(r'<td class="playerCol[^"]*">.*?<a [^>]*>([^<]+)</a>', r)
+        id_m = re.findall(r'<a href="/stats/players(/\d+/[^"]*)"', r)
+        details = re.findall(r'<td class="statsDetail">(.*?)</td>', r)
+        rounds_m = re.findall(r'<td class="statsDetail gtSmartphone-only">(.*?)</td>', r)
+        rating_m = re.findall(r'<td class="ratingCol[^"]*">([^<]+)</td>', r)
+        if name_m and id_m and details and rounds_m and rating_m:
+            Name.append(name_m[0].strip())
+            Id.append(id_m[0].strip())
+            Mapcount.append(details[0].strip())
+            Rounds.append(rounds_m[0].strip())
+            Rating.append(rating_m[0].strip())
 
 #CT,T,pistols
 CTname,CTrating=inner_stats_scraper(webfront+eventfilter+"&side=COUNTER_TERRORIST"+minMapCountfilter) 
@@ -154,18 +196,23 @@ Pistolname,Pistolrating =inner_stats_scraper(webfront+"/pistols"+eventfilter+min
 driver.get(webfront+"/openingkills"+eventfilter+minMapCountfilter)
 time.sleep(0.6657)
 content = driver.page_source
-ok = re.findall('class="statsDetail">(.*?)</td>',content)
-Openingkillrating = re.findall('class="ratingCol(.*?)</td>',content)
-Openingkillname = re.findall('data-tooltip-id="uniqueTooltipId-(.*?)</a></td>',content)
-count=0
-Openingkillattempts=[]
-Openingkillsuccess=[]
-for i in ok:
-    if count%4 == 2:
-        Openingkillattempts.append(i)
-    if count%4 == 3:
-        Openingkillsuccess.append(i)
-    count+=1
+Openingkillname = []
+Openingkillrating = []
+Openingkillattempts = []
+Openingkillsuccess = []
+
+tbody_m = re.findall(r'<tbody[^>]*>(.*?)</tbody>', content, re.DOTALL)
+if tbody_m:
+    rows = re.findall(r'<tr[^>]*>(.*?)</tr>', tbody_m[0], re.DOTALL)
+    for r in rows:
+        name_m = re.findall(r'<td class="playerCol[^"]*">.*?<a [^>]*>([^<]+)</a>', r)
+        rating_m = re.findall(r'<td class="ratingCol[^"]*">([^<]+)</td>', r)
+        details = re.findall(r'<td class="statsDetail">(.*?)</td>', r)
+        if name_m and rating_m and len(details) >= 4:
+            Openingkillname.append(name_m[0].strip())
+            Openingkillrating.append(rating_m[0].strip())
+            Openingkillattempts.append(details[2].strip())
+            Openingkillsuccess.append(details[3].strip())
 
 #赛事扫描
 Bigeventname,Bigeventmap,Bigeventrating = multi_event_scraper(webfront+bigeventfilter+"&minMapCount=0")
@@ -196,7 +243,7 @@ for i,j in zip(bigevent,bigeventplayoff):
     content = driver.page_source
     bigeventplayofftempname = re.findall('data-tooltip-id="uniqueTooltipId-(.*?)</a></td>',content)
     bigeventplayofftempmap = re.findall('<td class="statsDetail">(.*?)</td>',content)
-    bigeventplayoffrating = re.findall('class="ratingCol(.*?)</td>',content)
+    bigeventplayoffrating = re.findall('<td class="ratingCol(.*?)</td>',content)
     bigeventplayoffrounds = re.findall('<td class="statsDetail gtSmartphone-only">(.*?)</td>',content)
     bigeventplayoffmap = []
     bigeventplayoffname = []
@@ -260,6 +307,10 @@ for name,mapcount,rating,id,rounds in zip(Name,Mapcount,Rating,Id,Rounds):
             upload_excel1(openingkillsuccess)
             upload_excel1(openingkillrating)
             break
+    else:
+        upload_excel1("-")
+        upload_excel1("-")
+        upload_excel1("-")
     upload_excel2(Pistolname,Pistolrating)
     #网址清理，用于进入选手个人界面
     statsuffix = id.replace('amp;','')
@@ -267,27 +318,35 @@ for name,mapcount,rating,id,rounds in zip(Name,Mapcount,Rating,Id,Rounds):
     content = driver.page_source
     time.sleep(0.6657)
     #获取选手面板数据，rating已经统计不被需要
-    Playerstatform=re.findall('<div class="player-summary-stat-box-data traditionalData">(.*?)</div>',content)
-    DPR = Playerstatform[0]
+    _trad_raw = re.findall(r'<div class="player-summary-stat-box-data traditionalData">(.*?)</div>', content)
+    _eco_raw = re.findall(r'<div class="player-summary-stat-box-data ecoAdjustedData hidden">(.*?)</div>', content)
+    _clean_stat = lambda s: re.sub(r'<[^>]+>', '', s).replace('%', '').strip()
+    _trad = [_clean_stat(x) for x in _trad_raw]
+    _eco = [_clean_stat(x) for x in _eco_raw]
+
+    _rs_raw = re.findall(r'<div class="player-summary-stat-box-data">([^<]*)<span class="', content)
+    RS = _rs_raw[0].replace('%', '').strip() if _rs_raw else "-"
+
+    DPR = _trad[0] if len(_trad) > 0 else "-"
+    KAST = _trad[1] if len(_trad) > 1 else "-"
+    ADR = _trad[3] if len(_trad) > 3 else "-"
+    KPR = _trad[4] if len(_trad) > 4 else "-"
+
+    DPRE = _eco[0] if len(_eco) > 0 else "-"
+    KASTE = _eco[1] if len(_eco) > 1 else "-"
+    MULTIKILL = _eco[2] if len(_eco) > 2 else "-"
+    ADRE = _eco[3] if len(_eco) > 3 else "-"
+    KPRE = _eco[4] if len(_eco) > 4 else "-"
+
     upload_excel1(DPR)
-    KAST=re.findall('<div class="player-summary-stat-box-data traditionalData">(.*?)<span',content)
-    upload_excel1(KAST[0])
-    RS = re.findall('<div class="player-summary-stat-box-data">(.*?)<span class="',content)
-    upload_excel1(RS[0])
-    ADR = Playerstatform[3]
+    upload_excel1(KAST)
+    upload_excel1(RS)
     upload_excel1(ADR)
-    KPR = Playerstatform[4]
     upload_excel1(KPR)
-    Playerstatform_eco=re.findall('<div class="player-summary-stat-box-data ecoAdjustedData hidden">(.*?)</div>',content)
-    DPRE = Playerstatform_eco[0]
     upload_excel1(DPRE)
-    KASTE=re.findall('<div class="player-summary-stat-box-data ecoAdjustedData hidden">(.*?)<span',content)
-    upload_excel1(KASTE[0])
-    MULTIKILL = Playerstatform_eco[2]
+    upload_excel1(KASTE)
     upload_excel1(MULTIKILL)
-    ADRE = Playerstatform_eco[3]
     upload_excel1(ADRE)
-    KPRE = Playerstatform_eco[4]
     upload_excel1(KPRE)
     kills = re.findall('Total kills</span><span>(.*?)</span></div>',content)
     kills = kills[0]
@@ -304,30 +363,30 @@ for name,mapcount,rating,id,rounds in zip(Name,Mapcount,Rating,Id,Rounds):
     livetime = re.findall(r"\d+\.?\d*",livetime_perround_str)
     livetime_perround = float(livetime[0])*60.0+float(livetime[1])
 
-    #统计选手对阵top5数据
-    VStop5maplist =   re.findall('vs top 5 opponents</div>\n                      <div class="rating-maps">(.*?)</div>',content)
-    VStop5map = VStop5maplist[0]
-    VStop5map = VStop5map.replace('(','')
-    VStop5map = VStop5map.replace(' maps)','')
-    upload_excel1(VStop5map)
-    VStop5rating = re.findall('<div class="rating-value">(.*?)</div>\n                      <div class="rating-description">vs top 5 opponents',content)
-    upload_excel1(VStop5rating[0])
-    #统计选手对阵top10数据
-    VStop10maplist = re.findall('vs top 10 opponents</div>\n                      <div class="rating-maps">(.*?)</div>',content)
-    VStop10map = VStop10maplist[0]
-    VStop10map = VStop10map.replace('(','')
-    VStop10map = VStop10map.replace(' maps)','')
-    upload_excel1(VStop10map)
-    VStop10rating = re.findall('<div class="rating-value">(.*?)</div>\n                      <div class="rating-description">vs top 10 opponents',content)
-    upload_excel1(VStop10rating[0])
-    #统计选手对阵top20数据
-    VStop20maplist = re.findall('vs top 20 opponents</div>\n                      <div class="rating-maps">(.*?)</div>',content)
-    VStop20map = VStop20maplist[0]
-    VStop20map = VStop20map.replace('(','')
-    VStop20map = VStop20map.replace(' maps)','')
-    upload_excel1(VStop20map)
-    VStop20rating = re.findall('<div class="rating-value">(.*?)</div>\n                      <div class="rating-description">vs top 20 opponents',content)
-    upload_excel1(VStop20rating[0])
+    #统计选手对阵top5/10/20数据
+    _breakdown_matches = re.findall(
+        r'<div class="rating-breakdown">\s*<div class="rating-value">([^<]*)</div>\s*<div class="rating-description">([^<]*)</div>\s*<div class="rating-maps">\s*\(([^<]*)\)\s*</div>',
+        content
+    )
+    _breakdown = {
+        desc.strip(): (val.strip(), maps.replace('maps', '').replace('map', '').strip())
+        for val, desc, maps in _breakdown_matches
+    }
+
+    # vs top 5
+    top5_val, top5_map = _breakdown.get("vs top 5 opponents", ("-", "0"))
+    upload_excel1(top5_map)
+    upload_excel1(top5_val)
+
+    # vs top 10
+    top10_val, top10_map = _breakdown.get("vs top 10 opponents", ("-", "0"))
+    upload_excel1(top10_map)
+    upload_excel1(top10_val)
+
+    # vs top 20
+    top20_val, top20_map = _breakdown.get("vs top 20 opponents", ("-", "0"))
+    upload_excel1(top20_map)
+    upload_excel1(top20_val)
     #进入individual界面，统计首杀数和回合击杀
     time.sleep(0.6657)
     driver.get(webfront+"/individual"+statsuffix)
@@ -359,7 +418,7 @@ for name,mapcount,rating,id,rounds in zip(Name,Mapcount,Rating,Id,Rounds):
         time.sleep(0.6657)
         driver.get(webfront+"/matches"+statsuffix+"&offset="+str(offset1))
         content = driver.page_source
-        singlemaprating = re.findall('"none">(.*?)</td>\n                  </tr>',content)
+        singlemaprating = re.findall(r'<td [^>]*data-sort-method="none">([0-9.]+)</td>\s*</tr>',content)
         mapround = re.findall(r'</span></a><span> \((.*?)\)</span></div>',content)
         tempzz7 = 0 
         #求失败回合KPR和ADR
@@ -395,40 +454,19 @@ for name,mapcount,rating,id,rounds in zip(Name,Mapcount,Rating,Id,Rounds):
     upload_excel1(ratingabove130)
     upload_excel1(ratingabove145)
 
-    #统计选手残局获胜次数
+    #统计选手残局获胜次数 (从 all 页面一次性提取 1v1 ~ 1v5)
     pattern = r"(/[0-9]+)"
-    driver.get(webfront+"/clutches"+re.sub(pattern,r'\1'+"/1on1",statsuffix,1))
     time.sleep(0.6657)
+    driver.get(webfront+"/clutches"+re.sub(pattern,r'\1'+"/all",statsuffix,1))
     content = driver.page_source
-    clutch1v1win = re.findall('<div class="value">(.*?)</div>',content)
-    driver.get(webfront+"/clutches"+re.sub(pattern,r'\1'+"/1on2",statsuffix,1))
-    time.sleep(0.6657)
-    content = driver.page_source
-    clutch1v2win = re.findall('<div class="value">(.*?)</div>',content)
-    driver.get(webfront+"/clutches"+re.sub(pattern,r'\1'+"/1on3",statsuffix,1))
-    time.sleep(0.6657)
-    content = driver.page_source
-    clutch1v3win = re.findall('<div class="value">(.*?)</div>',content)
-    driver.get(webfront+"/clutches"+re.sub(pattern,r'\1'+"/1on4",statsuffix,1))
-    time.sleep(0.6657)
-    content = driver.page_source
-    clutch1v4win = re.findall('<div class="value">(.*?)</div>',content)
-    driver.get(webfront+"/clutches"+re.sub(pattern,r'\1'+"/1on5",statsuffix,1))
-    time.sleep(0.6657)
-    content = driver.page_source
-    clutch1v5win = re.findall('<div class="value">(.*?)</div>',content)
-    if clutch1v5win[0] =="-":
-        clutch1v5win[0] = "0"
-    if clutch1v4win[0] =="-":
-        clutch1v4win[0] = "0"
-    if clutch1v3win[0] =="-":
-        clutch1v3win[0] = "0"
-    if clutch1v2win[0] =="-":
-        clutch1v2win[0] = "0"
-    if clutch1v1win[0] =="-":
-        clutch1v1win[0] = "0"
-    upload_excel1(int(clutch1v5win[0])+int(clutch1v4win[0])+int(clutch1v3win[0])+int(clutch1v2win[0])+int(clutch1v1win[0]))
-    upload_excel1( (float(clutch1v5win[0])*16.0+float(clutch1v4win[0])*8.0+float(clutch1v3win[0])*4.0+float(clutch1v2win[0])*2.0+float(clutch1v1win[0])) /float(rounds))
+    won_clutches = re.findall(r'class="won">Won</td>\s*<td[^>]*>1 on (\d)</td>', content)
+    c1v1 = won_clutches.count('1')
+    c1v2 = won_clutches.count('2')
+    c1v3 = won_clutches.count('3')
+    c1v4 = won_clutches.count('4')
+    c1v5 = won_clutches.count('5')
+    upload_excel1(c1v5 + c1v4 + c1v3 + c1v2 + c1v1)
+    upload_excel1((float(c1v5)*16.0 + float(c1v4)*8.0 + float(c1v3)*4.0 + float(c1v2)*2.0 + float(c1v1)*1.0) / float(rounds))
     #上传bigevent等数据
     upload_excel3(Bigeventname,Bigeventmap,Bigeventrating)
     upload_excel3(Eliteeventname,Eliteeventmap,Eliteeventrating)
@@ -480,59 +518,24 @@ for name,mapcount,rating,id,rounds in zip(Name,Mapcount,Rating,Id,Rounds):
     upload_excel3(Bigeventfinalname,Bigeventfinalmap,Bigeventfinalrating)
 
     #进入武器界面，统计选手击杀使用武器平均价值
+    time.sleep(0.6657)
     driver.get(webfront+"/weapon"+statsuffix)
     content = driver.page_source
-    weapon_name = re.findall('.</span><span> (.*?)<',content)
-    weapon_kill = re.findall('</span></div>\n<span>(.*?)<',content)
-    economy_sum = 0
-    kill_sum = 0
-    tempzz1 = 0
-    for i in weapon_name:
-        if i == "awp":
-            economy_sum += 4750 * float(weapon_kill[tempzz1])
-        elif i == "ak47":
-            economy_sum += 2700 * float(weapon_kill[tempzz1])
-        elif i == "m4a1" or i == "m4a1_silencer":
-            economy_sum += 2900 * float(weapon_kill[tempzz1])
-        elif i == "ssg08" or i == "negev":
-            economy_sum += 1700 * float(weapon_kill[tempzz1])
-        elif i == "usp_silencer" or i == "hkp2000" or i == "glock" or i == "usp_silencer_off" or i == "taser":
-            economy_sum += 200 * float(weapon_kill[tempzz1])
-        elif i == "deagle":
-            economy_sum += 700 * float(weapon_kill[tempzz1])
-        elif i == "fiveseven" or i == "tec9" or i == "cz75a":
-            economy_sum += 500 * float(weapon_kill[tempzz1])
-        elif i ==  "revolver":
-            economy_sum += 600 * float(weapon_kill[tempzz1])
-        elif i == "elite" or i == "p250":
-            economy_sum += 300 * float(weapon_kill[tempzz1])
-        elif i == "ump45" or i == "mp9":
-            economy_sum += 1250 * float(weapon_kill[tempzz1])
-        elif i == "bizon":
-            economy_sum += 1400 * float(weapon_kill[tempzz1])
-        elif i == "mp7" or i == "mp5sd":
-            economy_sum += 1500 * float(weapon_kill[tempzz1])
-        elif i == "mag7":
-            economy_sum += 1300 * float(weapon_kill[tempzz1])
-        elif i == "galilar":
-            economy_sum += 1800 * float(weapon_kill[tempzz1])
-        elif i == "famas":
-            economy_sum += 1950 * float(weapon_kill[tempzz1])
-        elif i == "aug":
-            economy_sum += 3300 * float(weapon_kill[tempzz1])
-        elif i == "sg556":
-            economy_sum += 3000 * float(weapon_kill[tempzz1])
-        elif i == "xm1014":
-            economy_sum += 2000 * float(weapon_kill[tempzz1])
-        elif i == "mac10" or i == "nova":
-            economy_sum += 1050 * float(weapon_kill[tempzz1])
-        elif i == "g3sg1" or i == "scar20" or i == "m249":
-            economy_sum += 2300 * float(weapon_kill[tempzz1])
-        else:
-            economy_sum += 0 * float(weapon_kill[tempzz1])
-        kill_sum += float(weapon_kill[tempzz1])
-        tempzz1+=1
-    upload_excel1(economy_sum/kill_sum)
+    weapon_items = re.findall(
+        r'<div class="stats-row">\s*<div>\s*<span class="strong">[^<]*</span>\s*<span>\s*([^<]+)</span>\s*</div>\s*<span>(\d+)</span>',
+        content
+    )
+    economy_sum = 0.0
+    kill_sum = 0.0
+    for w, k in weapon_items:
+        w_clean = w.strip().lower()
+        k_val = float(k)
+        economy_sum += WEAPON_PRICES.get(w_clean, 0.0) * k_val
+        kill_sum += k_val
+    if kill_sum > 0:
+        upload_excel1(economy_sum / kill_sum)
+    else:
+        upload_excel1("-")
     print(row) #用于测试
     player_data[name] = row
     row_idx = next((i for i, r in enumerate(ws.iter_rows(min_row=2, max_col=1, values_only=True)) if r[0] == name), None)
