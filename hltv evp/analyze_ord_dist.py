@@ -36,6 +36,8 @@ def run_event(eid, mvp_slug, evp_slugs):
     if not slugs:
         return
     N = len(slugs)
+    # 诊断用纯公式口径 (裸 EVP_CONFIG) → CS2 赛事不含 mapstats 机制 (mechanism-off).
+    # 如需生产镜像 (机制-on), 改用 cfg=evp_exp.cfg_for(ef.segment_of(eid)).
     summary, *_ = evp_exp.run_experiment(None, None, None, cfg=evp_exp.EVP_CONFIG,
                                          save=False, raw_df=cache[eid])
     df = summary.sort_values("total_score", ascending=False).reset_index(drop=True)

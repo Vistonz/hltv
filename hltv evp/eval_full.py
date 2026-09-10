@@ -11,8 +11,8 @@
   - in_topn (核心): 官方名单成员 ⊆ 算法 top N (N = 官方人数)
   - mvp_ok: 官方 MVP == 算法第1
   - ordered: 仅对 (新闻有序 且 与详情页集合一致) 的赛事: 官方名单[i] ∈ 算法 top[:i+1]
-  - line_mismatch (分年代绝对线判据, 2026-09-01 用户定案三档线):
-      ≤2023→4.0, 2024→4.5, ≥2025→5.0. 每赛事:
+  - line_mismatch (两段产品线绝对线判据, 2026-09-09 用户定案:
+      产品段 CS:GO→4.0 / CS2→4.5, 取代 2026-09-01 的三档年线). 每赛事:
       hi = 官方入选最低分, lo = 官方落选最高分,
       e_mis = max(0, line−hi) + max(0, lo−line). 全 0 = 线以上的人都入选、线以下都没入选.
 
@@ -45,6 +45,12 @@ W_MIS = 0.1   # 分年代线 mismatch 惩罚权重 (2026-09-01: 0.5→0.2→0.1,
 #   距离越远扣分越多; |d| ≥ 1/DIST_ALPHA 归零. 替代原二值"前缀包含"命中率.
 #   α=0.33: 差1名得0.67, 差2名得0.34, 差3名及以上归零 (用户 2026-09-01 定案).
 DIST_ALPHA = 0.33
+
+# 两段产品线 (2026-09-09 用户指令: 分代从三档年线改为产品段 CS:GO/CS2)
+CS2_START_DATE = "2023-09-27"           # CS2 首发日 (含) → CS2 段
+# CS2 单段线 4.5 定案依据 (Phase1.5 基线, 2026-09-09): 63 CS2 评估赛事在现 42 参数下,
+#   均匀单线 4.5 的 mismatch 和最小 (70.9 < 5.0 的 73.9 < 4.0 的 79.0), obj 161.18 两段最优.
+SEG_LINE = {"csgo": 4.0, "cs2": 4.5}
 
 # 差异过大的新闻有序赛事 (详情页为准, 不参与 ordered 指标, 但仍参与 in_topn/mvp/mismatch)
 # 由 extract_all_lists.py 对比自动标出到 /tmp/discard_ordered.json; 此处可覆盖.
@@ -146,8 +152,14 @@ def build_name_index(players, needed_slugs, slug2nick):
 
 
 def eval_cfg(cfg, cache, official, ordered, slug2nick, discard_ordered=None,
-             quiet=True):
-    """cache: {eid: raw_df}. 返回指标 dict."""
+             cs2_overrides=None, quiet=True):
+    """cache: {eid: raw_df}. 返回指标 dict.
+
+    cfg: CS:GO 段配置 (= EVP_CONFIG, 评估必须逐字节冻结). CS2 段事件改用
+      evp_exp.cfg_for('cs2', base=cfg, cs2_overrides=cs2_overrides) — base 的 42 核心 +
+      CS2 专属机制轴权重. cs2_overrides=None → 模块 CS2_OVERRIDES (生产默认);
+      {} → 强制 CS2 机制关 (闸门基线); dict → 搜索逐点传入的 CS2 覆写.
+    """
     discard_ordered = discard_ordered or set()
     in_hit = in_tot = 0
     ord_hit = ord_tot = 0
@@ -163,7 +175,13 @@ def eval_cfg(cfg, cache, official, ordered, slug2nick, discard_ordered=None,
         if not slugs:
             continue
         N = len(slugs)
-        summary, *_ = evp_exp.run_experiment(None, None, None, cfg=cfg,
+        # 两套分拆 (2026-09-09): CS2 事件用 base+CS2 覆写, CS:GO 事件永远用 cfg 原样
+        # (→ CS:GO 逐字节冻结在评估层保证, 与公式层结构性冻结双保险).
+        if segment_of(eid) == "cs2":
+            use_cfg = evp_exp.cfg_for("cs2", base=cfg, cs2_overrides=cs2_overrides)
+        else:
+            use_cfg = cfg
+        summary, *_ = evp_exp.run_experiment(None, None, None, cfg=use_cfg,
                                              save=False, raw_df=cache[eid])
         df = summary.sort_values("total_score", ascending=False).reset_index(drop=True)
         slug_map = build_name_index(df["player"], slugs, slug2nick)
@@ -190,7 +208,7 @@ def eval_cfg(cfg, cache, official, ordered, slug2nick, discard_ordered=None,
         scores = dict(zip(df["player"], df["total_score"]))
         in_names = set(official_players)
         out_names = set(df["player"]) - in_names
-        line = year_line(_event_year(eid))
+        line = segment_line(segment_of(eid))
         e_mis = 0.0
         if in_names:
             hi = min(scores[p] for p in in_names if p in scores)
@@ -283,34 +301,47 @@ def eval_cfg(cfg, cache, official, ordered, slug2nick, discard_ordered=None,
 #   7907 自身无官方名单(不进评估集), 别名无双重计数.
 RAW_ALIAS = {7912: 7907}
 
-_YEAR_CACHE = {}
+_META_CACHE = {}
+
+
+def _meta_start(eid):
+    """赛事 meta start_date 字符串 (RAW_ALIAS 别名解析). 惰性缓存, 只首次读盘. 失败 → None."""
+    if eid in _META_CACHE:
+        return _META_CACHE[eid]
+    src = RAW_ALIAS.get(eid, eid)
+    meta = os.path.join(BASE, str(src), f"event_{src}_meta.json")
+    d = None
+    try:
+        with open(meta, encoding="utf-8") as f:
+            d = json.load(f).get("start_date")
+    except Exception:
+        pass
+    _META_CACHE[eid] = d
+    return d
 
 
 def _event_year(eid):
-    """赛事年份 (meta start_date 前4位). 惰性缓存, 只首次读盘."""
-    if eid in _YEAR_CACHE:
-        return _YEAR_CACHE[eid]
-    src = RAW_ALIAS.get(eid, eid)
-    meta = os.path.join(BASE, str(src), f"event_{src}_meta.json")
-    year = None
+    """赛事开始年份 (meta start_date 前4位). 解析失败 → None. 供按年分析/分组."""
+    d = _meta_start(eid)
+    if not d:
+        return None
     try:
-        with open(meta, encoding="utf-8") as f:
-            year = int(json.load(f)["start_date"][:4])
-    except Exception:
-        pass
-    _YEAR_CACHE[eid] = year
-    return year
+        return int(str(d).strip()[:4])
+    except (TypeError, ValueError):
+        return None
 
 
-def year_line(year):
-    """分年代 EVP 标准线 (2026-09-01 定案): ≤2023→4, 2024→4.5, ≥2025→5."""
-    if year is None:
-        return 5.0  # 未知年份按最新线保守
-    if year <= 2023:
-        return 4.0
-    if year == 2024:
-        return 4.5
-    return 5.0
+def segment_of(eid):
+    """赛事产品段: start_date >= CS2_START_DATE → 'cs2', 否则 'csgo'. 解析失败按 'cs2' 保守."""
+    d = _meta_start(eid)
+    if d is None:
+        return "cs2"
+    return "cs2" if str(d).strip()[:10] >= CS2_START_DATE else "csgo"
+
+
+def segment_line(segment):
+    """两段产品线 EVP 标准线 (2026-09-09 定案): CS:GO→4.0, CS2→4.5. 未知段按 CS2 线保守."""
+    return SEG_LINE.get(segment, SEG_LINE["cs2"])
 
 
 def load_cache(official):
@@ -320,7 +351,7 @@ def load_cache(official):
         raw = os.path.join(BASE, str(src), f"raw_event_{src}_data.xlsx")
         if os.path.exists(raw):
             cache[eid] = pd.read_excel(raw)
-            _event_year(eid)  # 预填充年份缓存
+            _meta_start(eid)  # 预填充 meta start_date 缓存 (segment_of/_event_year 共用)
     return cache
 
 

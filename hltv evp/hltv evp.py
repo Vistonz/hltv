@@ -2,6 +2,7 @@ import re
 import os
 import json
 import math
+import time
 import pandas as pd
 from openpyxl.utils.dataframe import dataframe_to_rows
 import undetected_chromedriver as uc
@@ -12,8 +13,12 @@ from selenium.webdriver.common.by import By
 # 新算法 (2026-08-30): 用 evp_experiment 的 EVP_CONFIG 定案 (obj=107.03) 替换旧 calculate_performance_score 计算.
 # 保留: 赛事含金量权重 (event_scores_lookup.xlsx) + 产物输出结构 (EVP_Summary/Per_Map_Scores/透视表).
 import evp_experiment as evp_exp
+# 两套分拆的赛事分段判定 (segment_of: CS:GO/CS2) — 与评估口径同一权威源 (2026-09-10)
+import eval_full as ev  # noqa: E402
 # 赛事含金量 (eventrank): 计算赛事队伍积分/当期世界总积分 → event_scores_lookup.xlsx (Step 1.5)
 import eventrank
+# CS2 mapstatsid (每图 performance) 解析: 地图级 KPR/DPR/KAST/MK/Swing/ADR/Rating3.0 + 事件导出 (2026-09-08)
+import mapstats_parser as msp
 
 # ----------------------------------------------------------------------
 # 1. 
@@ -44,6 +49,13 @@ rank_db_directory = "/home/hongbin/Desktop/hltv/database/rank"
 # 名单按 offset 抓取顺序排列 (时间从新到旧), Step1 遇到第一个早于 RANK_START_DATE 的赛事即 break,
 # 其后的更旧赛事不再爬取.
 RANK_START_DATE = "2015-10-01"          # HLTV 战队排名起始日 (2015-10-01 起才有周快照)
+# CS2 边界 (2026-09-08): CS2 于 2023-09-27 发布. 仅 start_date >= 该日的赛事 (最早如 6865 IEM Sydney
+# 2023-10-16) 补抓 mapstatsid 每图 performance 地图级字段; CS:GO 赛事无 Round Swing/这些数据, 保持原样.
+CS2_START_DATE = "2023-09-27"
+# 交付物写出范围 (2026-09-10): "all"=全部赛事 (默认); "cs2"/"csgo"=只写该段赛事的
+# event_{id}_evp_summary.xlsx (另一段交付物保持冻结不覆盖); 透视表始终用全部赛事行重算.
+# 用途: 机制口径变更后只重生成 CS2 交付物 → EVP_WRITE_EVENTS=cs2
+WRITE_EVENTS = os.environ.get("EVP_WRITE_EVENTS", "all").strip().lower()
 MVP_LIST_FILE = os.path.join(base_directory, "mvp_events.xlsx")
 
 # 内置回退: 原写死的 12 个 2026 赛事 (名单文件缺失/无 url 列时保证脚本仍可独立运行)
@@ -145,6 +157,57 @@ def ensure_driver(driver):
         except Exception:
             pass
         return uc.Chrome(version_main=152, browser_executable_path="/usr/bin/google-chrome-stable")
+
+def is_cs2_event(event_start_date):
+    """是否 CS2 赛事: start_date(YYYY-MM-DD) >= CS2_START_DATE 即启用 mapstatsid 每图补抓."""
+    return bool(event_start_date) and str(event_start_date) >= CS2_START_DATE
+
+def event_meta_start_date(target_directory, event_id):
+    """读取已落盘 event_{id}_meta.json 的 start_date; 无则返回 None."""
+    try:
+        mf = os.path.join(target_directory, f"event_{event_id}_meta.json")
+        with open(mf, "r") as f:
+            return json.load(f).get("start_date")
+    except Exception:
+        return None
+
+def raw_has_mapstats(file_path):
+    """raw xlsx 是否已含 mapstats 补抓列 (header 出现 map_kpr)."""
+    try:
+        cols = pd.read_excel(file_path, nrows=0).columns.tolist()
+        return "map_kpr" in cols
+    except Exception:
+        return False
+
+def ensure_perf_driver(driver):
+    """兼容占位: performance 抓取复用主流程 driver (executable 152 配置经实测可过 performance 页).
+
+    曾为 performance 页另起一个无 executable 的最小 Chrome, 但该启动方式在本机不可靠
+    (SessionNotCreatedException: cannot connect to chrome), 而带 executable 的主 driver 已被
+    现场验证能抓 /stats/matches/performance/* (6MB 有 highlighted-player, 无 CF). 故直接返回
+    主 driver, 不再维护第二浏览器. 仅当主 driver 崩溃时返回 None (调用方放弃本场后续图)."""
+    if driver is None:
+        return None
+    try:
+        driver.current_url            # 窗口关闭/崩溃时抛异常
+        return driver
+    except Exception:
+        print("  [mapstats] 主 driver 窗口已关闭, 放弃本场后续 performance 补抓")
+        return None
+
+def fetch_perf_html(driver, url):
+    """单图 mapstatsid(performance) 页抓取 -> html 或 None (CF 未过/超时/异常)."""
+    try:
+        driver.get(url)
+        for _ in range(20):
+            time.sleep(3)
+            html = driver.page_source
+            if ("highlighted-player" in html and "Just a moment" not in html
+                    and "请稍候" not in html and len(html) > 50000):
+                return html
+    except Exception as e:
+        print(f"  [mapstats] 抓取异常 {type(e).__name__}: {e}")
+    return None
 
 def get_rank_weight(opponent_rank):
     weight = BASE_WEIGHT_C + (RANK_K / (opponent_rank + 5))
@@ -253,8 +316,17 @@ def run_step1_scrape_data():
         print(f"\n--- (Step 1) 正在检查: {current_event_name} ---")
 
         if os.path.exists(raw_data_file_path):
-            print(f"检测到已存在的数据: {raw_data_file_path}，跳过抓取。")
-            continue
+            # 已存在数据: 若已含 mapstats 补抓列 (map_kpr) 则跳过 (幂等);
+            # 缺列时仅当为 CS2 赛事 (start >= CS2_START_DATE) 才重建以补抓每图字段; CS:GO 赛事保持原样.
+            if raw_has_mapstats(raw_data_file_path):
+                print(f"检测到已存在数据且已含 mapstats 列, 跳过抓取。")
+                continue
+            meta_sd = event_meta_start_date(target_directory, event_id)
+            if is_cs2_event(meta_sd):
+                print(f"检测到已存在数据 (CS2, start {meta_sd}) 但缺 mapstats 列 -> 重建以补抓每图字段")
+            else:
+                print(f"检测到已存在数据 (CS:GO 或无需补抓), 跳过。")
+                continue
 
         print(f"未找到缓存，开始抓取: {current_event_name}")
         
@@ -303,6 +375,11 @@ def run_step1_scrape_data():
                 break
             # -------------------------------------------------------
 
+            # --- [CS2 补抓] 边界判定: 仅 CS2 赛事 (start_date >= CS2_START_DATE) 启用 mapstatsid ---
+            cs2_event = is_cs2_event(event_start_date)
+            if cs2_event:
+                print(f"  -> CS2 赛事 (start {event_start_date} >= {CS2_START_DATE}): 启用每图 mapstatsid 补抓")
+
             team_name = re.findall('<div class="text">(.*?)<',content)
             team_rank_raw = re.findall('<div class="event-world-rank" title=".*?">#(.*?)<', content)
             team_rank_clean = [r for r in team_rank_raw if r.isdigit()]
@@ -340,6 +417,17 @@ def run_step1_scrape_data():
                 except: continue
                 
                 content = driver.page_source
+
+                # --- [CS2 补抓] 本场各图 mapstatsid(performance) 链接 (出现序=图序; 页面链接为无 /performance/ 版) ---
+                mapstats_urls = []
+                if cs2_event:
+                    raw_ms = re.findall(r'href="(/stats/matches/mapstatsid/\d+[^"]*)"', content)
+                    raw_ms = list(dict.fromkeys(raw_ms))
+                    mapstats_urls = ["https://www.hltv.org" + u.replace(
+                        "/stats/matches/mapstatsid/", "/stats/matches/performance/mapstatsid/", 1)
+                        for u in raw_ms]
+                    if mapstats_urls:
+                        print(f"  [mapstats] 本场发现 {len(mapstats_urls)} 个地图性能页")
 
                 game_score = re.findall('<div class="results-team-score">(.*?)<', content)
                 game_team_name = re.findall('<div class="results-teamname text-ellipsis">(.*?)<', content)
@@ -410,37 +498,61 @@ def run_step1_scrape_data():
                             team2_avg_rating = sum(t2_ratings_float) / 5 if t2_ratings_float else 1.0
                             all_map_player_ratings = t1_ratings_float + t2_ratings_float
                             map_baseline_rating = sum(all_map_player_ratings) / 10.0 if len(all_map_player_ratings) == 10 else 1.0
-                        except: continue 
+                        except: continue
+
+                        # ---- [CS2 补抓] 本图 mapstatsid(performance) 抓取 + 解析. 失败/CF 仅跳过该图, 不阻断主流程 ----
+                        # 复用主 driver (executable 152 实测可过 performance 页); 逐图导航不读回主页面,
+                        # 后续图/场靠新一轮 driver.get 重新加载, 故此处导航无副作用.
+                        map_enrich = {}
+                        if mapstats_urls and map_index < len(mapstats_urls):
+                            perf_driver = ensure_perf_driver(driver)
+                            if perf_driver is None:
+                                mapstats_urls = []          # 主 driver 已失效: 放弃本场后续图
+                            else:
+                                perf_html = fetch_perf_html(perf_driver, mapstats_urls[map_index])
+                                if perf_html:
+                                    try:
+                                        prow, pmeta = msp.build_summary(perf_html)
+                                        map_enrich = {(r["team"], r["nick"]): msp.enrich_cols(r)
+                                                      for r in prow.values()}
+                                        print(f"  [mapstats] 图{map_index + 1} 解析 {len(map_enrich)} 名选手, "
+                                              f"rounds={pmeta['n_rounds']}", flush=True)
+                                    except Exception as ee:
+                                        print(f"  [mapstats] 解析失败: {type(ee).__name__}: {ee}")
 
                         for j in range(PLAYERS_PER_TEAM):
                             player_idx = t1_start_idx + j
-                            all_player_raw_stats.append({
+                            row = {
                                 "player": game_player_name[player_idx].strip(),
                                 "team": team1_name,
                                 "opponent": team2_name,
                                 "opponent_rank": team2_rank,
                                 "match_stage": match_stage,
-                                "round_differential": map_team1_round_diff, 
+                                "round_differential": map_team1_round_diff,
                                 "rating": t1_ratings_float[j],
                                 "team_avg_rating": team1_avg_rating,
-                                "total_rounds": map_total_rounds, 
-                                "match_baseline_rating": map_baseline_rating 
-                            })
+                                "total_rounds": map_total_rounds,
+                                "match_baseline_rating": map_baseline_rating
+                            }
+                            row.update(map_enrich.get((team1_name, row["player"]), {}))
+                            all_player_raw_stats.append(row)
 
                         for j in range(PLAYERS_PER_TEAM):
                             player_idx = t2_start_idx + j
-                            all_player_raw_stats.append({
+                            row = {
                                 "player": game_player_name[player_idx].strip(),
                                 "team": team2_name,
                                 "opponent": team1_name,
                                 "opponent_rank": team1_rank,
                                 "match_stage": match_stage,
-                                "round_differential": map_team2_round_diff, 
+                                "round_differential": map_team2_round_diff,
                                 "rating": t2_ratings_float[j],
                                 "team_avg_rating": team2_avg_rating,
-                                "total_rounds": map_total_rounds, 
+                                "total_rounds": map_total_rounds,
                                 "match_baseline_rating": map_baseline_rating
-                            })
+                            }
+                            row.update(map_enrich.get((team2_name, row["player"]), {}))
+                            all_player_raw_stats.append(row)
 
                 except Exception as e:
                     print(f"处理比赛数据时出错: {e}")
@@ -512,7 +624,11 @@ def run_step2_calculate_global_stats():
             continue
 
         print(f"\n--- (Step 2) 正在处理: {current_event_name} (新算法) ---")
-        summary, _bo_all, map_all, _details = evp_exp.run_experiment(raw_data_path, None, None, save=False)
+        # 两套分拆 (2026-09-10): 逐赛事按产品段取 cfg — CS:GO=冻结源原样, CS2=EVP_CONFIG+CS2_OVERRIDES.
+        # 全局 z 统计必须与生产交付口径一致 (CS2 机制-on), 否则 mean/std 会混入 mechanism-off 的总分.
+        step_cfg = evp_exp.cfg_for(ev.segment_of(event_id))
+        summary, _bo_all, map_all, _details = evp_exp.run_experiment(
+            raw_data_path, None, None, cfg=step_cfg, save=False)
         all_scores.extend(summary["total_score"].tolist())
         grp = map_all.loc[map_all["match_stage"].isin(group_stages), "total_rounds"]
         all_group_rounds.extend(grp.tolist())
@@ -601,8 +717,12 @@ def run_step3_calculate_evp_pivot():
         print(f"加载赛事含金量: {current_event_score:.4f}")
 
         # ---- 新算法计算 (替换旧 calculate_performance_score 汇总逻辑) ----
+        # 两套分拆 (2026-09-10): 交付物 cfg 逐赛事取段 (CS:GO=冻结源原样 / CS2=+机制覆写),
+        # 与 eval_full 评估口径一致 — 否则 CS2 交付物会静默丢机制 (回退到 42 核纯公式总分).
+        _seg = ev.segment_of(event_id)
+        step3_cfg = evp_exp.cfg_for(_seg)
         summary, bo_all, map_all, _details = evp_exp.run_experiment(
-            raw_data_file_path, None, None, save=False)
+            raw_data_file_path, None, None, cfg=step3_cfg, save=False)
 
         # ---- 保留: EVP_Summary 列结构 (值来自新算法) ----
         s = summary.copy()
@@ -655,15 +775,18 @@ def run_step3_calculate_evp_pivot():
         pm["perf_score_weighted"] = map_all["map_score"] * map_all["total_rounds"]
         pm = pm.round({"perf_score_raw": 6, "perf_score_weighted": 6})
 
-        # ---- 保留: 输出 event_{eid}_evp_summary.xlsx ----
-        print(f"--- 正在保存 *单个* 赛事EVP总结 (新算法 + 赛事含金量): {evp_summary_file_path} ---")
-        try:
-            with pd.ExcelWriter(evp_summary_file_path, engine="openpyxl") as writer:
-                player_summary_reset.to_excel(writer, index=False, sheet_name=f"EVP_Summary_{event_id}")
-                pm.to_excel(writer, index=False, sheet_name="Per_Map_Scores")
-            print(f"成功保存总结和地图详情到: {evp_summary_file_path}")
-        except Exception as e:
-            print(f"错误: 保存 *单个* 赛事EVP总结文件失败: {e}")
+        # ---- 保留: 输出 event_{eid}_evp_summary.xlsx (受 WRITE_EVENTS 门控; 行数据始终进透视表) ----
+        if WRITE_EVENTS not in ("all", _seg):
+            print(f"--- 跳过写出 ({_seg} 段, EVP_WRITE_EVENTS={WRITE_EVENTS}): {evp_summary_file_path} ---")
+        else:
+            print(f"--- 正在保存 *单个* 赛事EVP总结 (新算法 + 赛事含金量): {evp_summary_file_path} ---")
+            try:
+                with pd.ExcelWriter(evp_summary_file_path, engine="openpyxl") as writer:
+                    player_summary_reset.to_excel(writer, index=False, sheet_name=f"EVP_Summary_{event_id}")
+                    pm.to_excel(writer, index=False, sheet_name="Per_Map_Scores")
+                print(f"成功保存总结和地图详情到: {evp_summary_file_path}")
+            except Exception as e:
+                print(f"错误: 保存 *单个* 赛事EVP总结文件失败: {e}")
 
     # ---- 保留: 全局透视表 (evp_score × 赛事, EVENT_SCORE 行, 列排序) ----
     print("\n===========================================================")

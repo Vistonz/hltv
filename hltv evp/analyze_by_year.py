@@ -15,6 +15,8 @@ official = ef.load_official()
 ordered = ef.load_ordered()
 cache = ef.load_cache(official)
 slug2nick = ef.load_slug2nick()
+# 诊断用纯公式口径 (裸 EVP_CONFIG, cs2_overrides=None) → CS2 赛事机制-off.
+# 基线/分年线画像沿用此口径; 若要生产镜像 (机制-on), 传 cs2_overrides=ef.evp_exp.CS2_OVERRIDES.
 r = ef.eval_cfg(ef.evp_exp.EVP_CONFIG, cache, official, ordered, slug2nick,
                 discard_ordered=ef.DISCARD_ORDERED)
 

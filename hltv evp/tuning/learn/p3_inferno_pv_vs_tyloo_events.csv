@@ -1,0 +1,199 @@
+round,event,action,alive,winprob,equip,swings
+1,1,Round started,5v5,46.7/53.3,PARIVISION=$4.1K (PISTOL);TYL=$4.35K (PISTOL),
+1,2,Jee killed xiELO,4v5,22.7/77.3,,Jee +24.03%;xiELO -24.03%
+1,3,FL1T killed Moseyuh,4v4,37.4/62.6,,FL1T +14.73%;Moseyuh -14.73%
+1,4,Mercury killed FL1T,3v4,18.7/81.3,,Mercury +11.46%;FL1T -18.75%;Moseyuh +7.29%
+1,5,Mercury planted the bomb,3v4,11.9/88.1,,Mercury +1.82%;xiELO -3.83%;FL1T -2.99%;Moseyuh +1.16%;Jee +3.83%
+1,6,Jee killed zweih,2v4,1.9/98.1,,Jee +9.94%;zweih -9.94%
+1,7,Zero killed slaxejezzz,1v4,0.1/99.9,,Zero +1.78%;slaxejezzz -1.78%
+1,8,Mercury killed Jame,0v4,0.0/100.0,,Mercury +0.15%;Jame -0.15%
+2,1,Round started,5v5,4.6/95.4,PARIVISION=$1.8K (ECO);TYL=$19.75K (FULL),
+2,2,Mercury killed slaxejezzz,4v5,2.0/98.0,,Mercury +2.62%;slaxejezzz -2.62%
+2,3,JamYoung killed FL1T,3v5,0.6/99.4,,JamYoung +1.38%;FL1T -1.41%;Moseyuh +0.03%
+2,4,Jee killed xiELO,2v5,0.1/99.9,,Jee +0.52%;xiELO -0.52%
+2,5,Mercury killed zweih,1v5,0.0/100.0,,Mercury +0.07%;zweih -0.07%
+2,6,JamYoung planted the bomb,1v5,0.0/100.0,,JamYoung -0.01%;zweih +0.00%;slaxejezzz +0.02%;xiELO +0.00%;FL1T +0.01%;Moseyuh -0.00%;Jee -0.00%;Mercury -0.02%
+2,7,Bomb detonated,1v5,0.0/100.0,,Jame -0.05%;Moseyuh +0.00%;Zero +0.00%;JamYoung +0.01%;Jee +0.01%;Mercury +0.02%
+3,1,Round started,5v5,50.0/50.0,PARIVISION=$22.6K (FULL);TYL=$20.05K (FULL),
+3,2,zweih killed Zero,5v4,67.0/33.0,,zweih +16.97%;Zero -16.97%
+3,3,Jee killed zweih,4v4,46.9/53.1,,Jee +12.31%;zweih -20.14%;Zero +7.83%
+3,4,Jame killed JamYoung,4v3,64.9/35.1,,Jame +17.99%;JamYoung -17.99%
+3,5,Jee planted the bomb,4v3,35.7/64.3,,Jee +17.84%;zweih -29.20%;Zero +11.35%
+3,6,slaxejezzz killed Mercury,4v2,71.4/28.6,,slaxejezzz +35.72%;Mercury -35.72%
+3,7,Jee killed xiELO,3v2,61.5/38.5,,Jee +6.71%;xiELO -9.87%;Mercury +3.16%
+3,8,FL1T killed slaxejezzz,2v2,34.7/65.3,,FL1T -23.47%;slaxejezzz -16.25%;Moseyuh +9.97%;JamYoung +0.23%;Mercury +3.63%
+3,9,Moseyuh killed FL1T,1v2,8.8/91.2,,Moseyuh +25.13%;FL1T -25.96%;JamYoung +0.83%
+3,10,Bomb detonated,1v2,0.0/100.0,,Jame -8.79%;Moseyuh +4.41%;Zero +0.66%;JamYoung +0.09%;Jee +3.06%;Mercury +0.57%
+4,1,Round started,5v5,23.7/76.3,PARIVISION=$13.3K (HALF);TYL=$25.5K (FULL),
+4,2,Mercury planted the bomb,5v5,3.3/96.7,,Mercury +4.08%;Jame -4.08%;zweih -4.08%;slaxejezzz -4.08%;xiELO -4.08%;FL1T -4.08%;Moseyuh +4.08%;Zero +4.08%;JamYoung +4.08%;Jee +4.08%
+4,3,Bomb detonated,5v5,0.0/100.0,,
+5,1,Round started,5v5,50.0/50.0,PARIVISION=$27.1K (FULL);TYL=$24.4K (FULL),
+5,2,Jame killed Mercury,5v4,67.0/33.0,,Jame +16.97%;Mercury -16.97%
+5,3,FL1T killed Moseyuh,5v3,84.4/15.6,,FL1T +17.39%;Moseyuh -17.39%
+5,4,Zero killed zweih,4v3,71.0/29.0,,Zero +13.37%;zweih -13.37%
+5,5,slaxejezzz killed Zero,4v2,87.9/12.1,,slaxejezzz +8.73%;zweih +8.19%;Zero -16.92%
+5,6,Jame killed Jee,4v1,98.9/1.1,,Jame +10.98%;Jee -10.98%
+5,7,JamYoung killed slaxejezzz,3v1,97.5/2.5,,JamYoung +1.45%;slaxejezzz -1.45%
+5,8,xiELO killed JamYoung,3v0,100.0/0.0,,xiELO +1.88%;zweih +0.10%;slaxejezzz +0.46%;FL1T +0.08%;JamYoung -2.52%
+6,1,Round started,5v5,50.0/50.0,PARIVISION=$30.95K (FULL);TYL=$24.25K (FULL),
+6,2,slaxejezzz killed Moseyuh,5v4,67.0/33.0,,slaxejezzz +14.70%;xiELO +2.27%;Moseyuh -16.97%
+6,3,slaxejezzz killed Zero,5v3,84.4/15.6,,slaxejezzz +17.39%;Zero -17.39%
+6,4,JamYoung killed xiELO,4v3,71.0/29.0,,JamYoung +13.12%;xiELO -13.37%;Mercury +0.26%
+6,5,slaxejezzz killed JamYoung,4v2,87.9/12.1,,slaxejezzz +4.70%;xiELO +12.22%;JamYoung -16.92%
+6,6,Mercury killed slaxejezzz,3v2,77.1/22.9,,Mercury +5.51%;slaxejezzz -10.88%;Moseyuh +4.23%;JamYoung +1.14%
+6,7,Mercury planted the bomb,3v2,61.5/38.5,,Mercury +3.70%;slaxejezzz -6.98%;xiELO -8.57%;Moseyuh +2.71%;JamYoung +9.14%
+6,8,Jee killed Jame,2v2,34.7/65.3,,Jee +26.77%;Jame -26.77%
+6,9,Mercury killed FL1T,1v2,8.8/91.2,,Mercury +25.96%;FL1T -25.96%
+6,10,zweih killed Mercury,1v1,20.7/79.3,,zweih +4.79%;FL1T +7.17%;Jee -3.80%;Mercury -8.15%
+6,11,zweih killed Jee,1v0,80.6/19.4,,zweih +23.13%;xiELO +12.52%;FL1T +24.25%;Jee -59.90%
+6,12,zweih defused the bomb,1v0,100.0/0.0,,zweih +13.37%;slaxejezzz +2.31%;xiELO +1.70%;FL1T +1.98%;Jee -9.68%;Mercury -9.68%
+7,1,Round started,5v5,70.0/30.0,PARIVISION=$30.35K (FULL);TYL=$6.75K (HALF),
+7,2,xiELO killed JamYoung,5v4,82.0/18.0,,xiELO +11.21%;FL1T +0.77%;JamYoung -11.98%
+7,3,FL1T killed Zero,5v3,92.4/7.6,,FL1T +10.42%;Zero -10.42%
+7,4,Jee killed FL1T,4v3,81.9/18.1,,Jee +5.61%;FL1T -10.56%;Moseyuh +0.82%;Zero +4.12%
+7,5,xiELO killed Moseyuh,4v2,91.7/8.3,,xiELO +4.61%;slaxejezzz +3.19%;FL1T +1.98%;Moseyuh -6.67%;Jee -3.11%
+7,6,xiELO killed Jee,4v1,99.2/0.8,,xiELO +2.67%;slaxejezzz +1.92%;FL1T +3.00%;Jee -7.59%
+7,7,xiELO killed Mercury,4v0,100.0/0.0,,xiELO +0.76%;Mercury -0.76%
+8,1,Round started,5v5,50.0/50.0,PARIVISION=$31.35K (FULL);TYL=$21.4K (FULL),
+8,2,FL1T killed Moseyuh,5v4,67.0/33.0,,FL1T +16.97%;Moseyuh -16.97%
+8,3,FL1T killed Mercury,5v3,84.4/15.6,,FL1T +17.39%;Mercury -17.39%
+8,4,JamYoung killed FL1T,4v3,71.0/29.0,,JamYoung +4.12%;FL1T -13.37%;Moseyuh +5.20%;Mercury +4.06%
+8,5,JamYoung killed zweih,3v3,44.4/55.6,,JamYoung +17.05%;zweih -26.61%;Jee +9.56%
+8,6,Zero planted the bomb,3v3,27.1/72.9,,Zero +0.00%;zweih -11.54%;FL1T -5.80%;Moseyuh +2.26%;JamYoung +9.18%;Jee +4.15%;Mercury +1.76%
+8,7,Jee killed xiELO,2v3,8.5/91.5,,Jee +18.58%;slaxejezzz -5.91%;xiELO -12.67%
+8,8,Jee killed slaxejezzz,1v3,0.9/99.1,,Jee +7.55%;slaxejezzz -7.55%
+8,9,Jame killed JamYoung,1v2,2.5/97.5,,Jame +0.70%;slaxejezzz +0.87%;FL1T +0.01%;JamYoung -1.58%
+8,10,Bomb detonated,1v2,0.0/100.0,,Jame -2.51%;Moseyuh +0.13%;Zero +0.42%;JamYoung +0.54%;Jee +1.32%;Mercury +0.10%
+9,1,Round started,5v5,50.0/50.0,PARIVISION=$30.35K (FULL);TYL=$22K (FULL),
+9,2,JamYoung killed xiELO,4v5,27.8/72.2,,JamYoung +22.19%;xiELO -22.19%
+9,3,Mercury killed slaxejezzz,3v5,9.2/90.8,,Mercury +15.78%;slaxejezzz -18.65%;Jee +2.87%
+9,4,Zero killed FL1T,2v5,2.0/98.0,,Zero +4.09%;FL1T -7.24%;Moseyuh +0.28%;JamYoung +2.87%
+9,5,Mercury planted the bomb,2v5,0.4/99.6,,Mercury +0.51%;slaxejezzz -0.61%;xiELO -0.72%;FL1T -0.24%;Moseyuh +0.01%;Zero +0.13%;JamYoung +0.82%;Jee +0.09%
+9,6,Bomb detonated,2v5,0.0/100.0,,Jame -0.20%;zweih -0.20%;Moseyuh +0.03%;Zero +0.05%;JamYoung +0.16%;Jee +0.04%;Mercury +0.11%
+10,1,Round started,5v5,50.0/50.0,PARIVISION=$30.4K (FULL);TYL=$25.7K (FULL),
+10,2,FL1T killed JamYoung,5v4,67.0/33.0,,FL1T +16.97%;JamYoung -16.97%
+10,3,Moseyuh killed FL1T,4v4,46.9/53.1,,Moseyuh +12.31%;xiELO -6.41%;FL1T -13.73%;JamYoung +7.83%
+10,4,xiELO killed Mercury,4v3,64.9/35.1,,xiELO +17.99%;Mercury -17.99%
+10,5,Moseyuh killed xiELO,3v3,44.4/55.6,,Moseyuh +12.49%;xiELO -20.44%;Mercury +7.95%
+10,6,Jame killed Zero,3v2,69.1/30.9,,Jame +24.72%;Zero -24.72%
+10,7,Jee killed slaxejezzz,2v2,49.1/50.9,,Jee +20.04%;slaxejezzz -20.04%
+10,8,Jee planted the bomb,2v2,34.7/65.3,,Jee +4.74%;slaxejezzz -4.74%;xiELO -6.36%;FL1T -3.25%;Moseyuh +5.87%;JamYoung +1.85%;Mercury +1.88%
+10,9,zweih killed Moseyuh,2v1,60.3/39.7,,zweih +18.33%;xiELO +7.26%;Moseyuh -25.59%
+10,10,zweih killed Jee,2v0,95.8/4.2,,zweih +35.46%;Jee -35.46%
+10,11,Jame defused the bomb,2v0,100.0/0.0,,Jame +2.01%;zweih +1.46%;xiELO +0.44%;FL1T +0.30%;Moseyuh -2.10%;Jee -2.10%
+11,1,Round started,5v5,50.0/50.0,PARIVISION=$30.95K (FULL);TYL=$24.9K (FULL),
+11,2,xiELO killed Moseyuh,5v4,67.0/33.0,,xiELO +11.80%;zweih +2.61%;FL1T +2.56%;Moseyuh -16.97%
+11,3,JamYoung killed xiELO,4v4,46.9/53.1,,JamYoung +20.14%;xiELO -20.14%
+11,4,Mercury killed Jame,3v4,20.6/79.4,,Mercury +18.37%;Jame -26.25%;JamYoung +4.13%;Jee +3.76%
+11,5,JamYoung killed zweih,2v4,5.0/95.0,,JamYoung +7.12%;zweih -15.63%;Mercury +8.51%
+11,6,slaxejezzz killed Mercury,2v3,14.2/85.8,,slaxejezzz +4.22%;Jame +3.60%;zweih +1.19%;FL1T +0.25%;Jee -2.95%;Mercury -6.31%
+11,7,FL1T killed JamYoung,2v2,39.8/60.2,,FL1T +15.52%;xiELO +10.00%;JamYoung -25.52%
+11,8,Zero killed FL1T,1v2,17.2/82.8,,Zero +13.35%;FL1T -22.57%;JamYoung +9.04%;Mercury +0.18%
+11,9,slaxejezzz killed Jee,1v1,50.8/49.2,,slaxejezzz +33.62%;Jee -33.62%
+11,10,Zero killed slaxejezzz,0v1,0.0/100.0,,Zero +24.45%;slaxejezzz -50.81%;Jee +26.36%
+12,1,Round started,5v5,50.0/50.0,PARIVISION=$25.25K (FULL);TYL=$24.6K (FULL),
+12,2,zweih killed Mercury,5v4,67.0/33.0,,zweih +16.97%;Moseyuh -5.40%;Mercury -11.57%
+12,3,zweih killed Moseyuh,5v3,84.4/15.6,,zweih +17.39%;Moseyuh -17.39%
+12,4,Jame killed Jee,5v2,96.2/3.8,,Jame +11.83%;Jee -11.83%
+12,5,JamYoung killed slaxejezzz,4v2,91.9/8.1,,JamYoung +4.31%;slaxejezzz -4.31%
+12,6,xiELO killed JamYoung,4v1,98.9/1.1,,xiELO +4.39%;slaxejezzz +0.98%;FL1T +1.65%;JamYoung -7.02%
+12,7,zweih killed Zero,4v0,100.0/0.0,,zweih +1.07%;Zero -1.07%
+13,1,Round started,5v5,53.3/46.7,PARIVISION=$4.15K (PISTOL);TYL=$3.75K (PISTOL),
+13,2,Mercury killed slaxejezzz,4v5,36.3/63.7,,Mercury +14.33%;slaxejezzz -16.97%;Jee +2.64%
+13,3,xiELO killed Mercury,4v4,57.0/43.0,,xiELO +9.62%;Jame +2.08%;slaxejezzz +9.03%;Mercury -20.72%
+13,4,Zero killed zweih,3v4,37.1/62.9,,Zero +16.89%;zweih -19.96%;Jee +3.07%
+13,5,FL1T killed Jee,3v3,57.9/42.1,,FL1T +14.30%;xiELO +6.54%;Zero -6.63%;Jee -14.21%
+13,6,Zero killed xiELO,2v3,32.4/67.6,,Zero +25.48%;xiELO -25.48%
+13,7,FL1T killed Zero,2v2,53.7/46.3,,FL1T +13.00%;zweih +8.27%;Zero -21.27%
+13,8,JamYoung killed FL1T,1v2,24.0/76.0,,JamYoung +17.96%;Jame -4.03%;FL1T -25.61%;Mercury +11.68%
+13,9,Jame killed JamYoung,1v1,44.6/55.4,,Jame +20.51%;JamYoung -20.51%
+13,10,Jame killed Moseyuh,1v0,100.0/0.0,,Jame +55.44%;Moseyuh -55.44%
+14,1,Round started,5v5,76.3/23.7,PARIVISION=$17.95K (FULL);TYL=$12.3K (HALF),
+14,2,xiELO killed Zero,5v4,88.9/11.1,,xiELO +8.54%;zweih +4.06%;Zero -8.59%;Mercury -4.01%
+14,3,Mercury killed slaxejezzz,4v4,77.0/23.0,,Mercury +10.00%;slaxejezzz -11.83%;Zero +1.83%
+14,4,Mercury killed FL1T,3v4,53.0/47.0,,Mercury +24.07%;FL1T -24.07%
+14,5,xiELO killed Mercury,3v3,70.1/29.9,,xiELO +10.42%;slaxejezzz +6.67%;Mercury -17.09%
+14,6,xiELO planted the bomb,3v3,91.2/8.8,,xiELO +13.51%;zweih +2.89%;slaxejezzz +4.76%;Zero -6.12%;Mercury -15.04%
+14,7,JamYoung killed xiELO,2v3,79.6/20.4,,JamYoung +6.99%;xiELO -11.67%;Mercury +4.68%
+14,8,Jame killed Moseyuh,2v2,77.2/22.8,,Jame -1.68%;FL1T -0.71%;Moseyuh +2.39%
+14,9,JamYoung killed Jame,1v2,48.5/51.5,,JamYoung +17.51%;Jame -28.66%;Moseyuh +11.15%
+14,10,zweih killed JamYoung,1v1,62.8/37.2,,zweih +8.69%;Jame +5.57%;JamYoung -14.26%
+14,11,Jee killed zweih,0v1,31.1/68.9,,Jee +9.06%;zweih -31.61%;Zero +3.96%;JamYoung +18.58%
+14,12,Bomb detonated,0v1,100.0/0.0,,Jame +4.23%;zweih +36.80%;slaxejezzz +7.25%;xiELO +20.58%;Jee -68.85%
+15,1,Round started,5v5,76.3/23.7,PARIVISION=$21.65K (FULL);TYL=$8.8K (HALF),
+15,2,zweih killed Zero,5v4,88.9/11.1,,zweih +10.66%;Jame +1.94%;Zero -8.59%;Jee -4.01%
+15,3,zweih killed Jee,5v3,96.2/3.8,,zweih +4.82%;slaxejezzz +1.15%;xiELO +1.36%;Jee -7.32%
+15,4,Jame planted the bomb,5v3,100.0/0.0,,Jame +0.37%;zweih +2.96%;slaxejezzz +0.22%;xiELO +0.26%;Zero -1.64%;Jee -2.17%
+15,5,Bomb detonated,5v3,100.0/0.0,,
+16,1,Round started,5v5,50.0/50.0,PARIVISION=$23.85K (FULL);TYL=$27.05K (FULL),
+16,2,Jee killed xiELO,4v5,33.0/67.0,,Jee +16.97%;xiELO -16.97%
+16,3,zweih killed Zero,4v4,53.1/46.9,,zweih +20.14%;Zero -20.14%
+16,4,JamYoung killed FL1T,3v4,35.1/64.9,,JamYoung +12.89%;FL1T -17.99%;Moseyuh +5.10%
+16,5,slaxejezzz killed JamYoung,3v3,55.6/44.4,,slaxejezzz +12.49%;FL1T +7.95%;JamYoung -20.44%
+16,6,Moseyuh killed slaxejezzz,2v3,30.9/69.1,,Moseyuh +13.48%;slaxejezzz -24.72%;JamYoung +11.24%
+16,7,zweih killed Jee,2v2,50.9/49.1,,zweih +20.04%;Jee -20.04%
+16,8,Jame planted the bomb,2v2,65.3/34.7,,Jame +0.00%;zweih +9.51%;slaxejezzz +2.96%;FL1T +1.88%;Zero -4.77%;JamYoung -4.84%;Jee -4.74%
+16,9,zweih killed Mercury,2v1,91.2/8.8,,zweih +25.96%;Mercury -25.96%
+16,10,Moseyuh killed zweih,1v1,79.3/20.7,,Moseyuh +6.00%;zweih -11.95%;Zero +1.30%;Mercury +4.65%
+16,11,Jame killed Moseyuh,1v0,100.0/0.0,,Jame +20.74%;Moseyuh -20.74%
+17,1,Round started,5v5,76.3/23.7,PARIVISION=$25.5K (FULL);TYL=$9.35K (HALF),
+17,2,JamYoung killed slaxejezzz,4v5,58.5/41.5,,JamYoung +15.00%;slaxejezzz -17.74%;Moseyuh +2.74%
+17,3,JamYoung killed FL1T,3v5,33.5/66.5,,JamYoung +25.01%;FL1T -25.01%
+17,4,xiELO killed Moseyuh,3v4,48.6/51.4,,xiELO +15.10%;Moseyuh -15.10%
+17,5,Zero killed zweih,2v4,20.7/79.3,,Zero +20.21%;zweih -19.02%;xiELO -8.87%;Jee +7.68%
+17,6,Mercury killed Jame,1v4,1.4/98.6,,Mercury +16.26%;Jame -19.36%;JamYoung +3.10%
+17,7,Zero killed xiELO,0v4,0.0/100.0,,Zero +1.15%;xiELO -1.38%;Moseyuh +0.23%
+18,1,Round started,5v5,30.0/70.0,PARIVISION=$8.65K (HALF);TYL=$28.6K (FULL),
+18,2,FL1T killed JamYoung,5v4,58.0/42.0,,FL1T +28.07%;Moseyuh -8.93%;JamYoung -19.14%
+18,3,FL1T killed Moseyuh,5v3,85.1/14.9,,FL1T +20.64%;slaxejezzz +3.67%;xiELO +2.79%;Moseyuh -27.10%
+18,4,slaxejezzz planted the bomb,5v3,91.9/8.1,,slaxejezzz +0.45%;xiELO +0.34%;FL1T +5.97%;Moseyuh -4.41%;JamYoung -2.34%
+18,5,Bomb detonated,5v3,100.0/0.0,,Jame +0.54%;zweih +0.54%;slaxejezzz +0.90%;xiELO +0.81%;FL1T +5.31%;Zero -2.70%;Jee -2.70%;Mercury -2.70%
+19,1,Round started,5v5,50.0/50.0,PARIVISION=$24.7K (FULL);TYL=$30.5K (FULL),
+19,2,Zero killed slaxejezzz,4v5,33.0/67.0,,Zero +14.04%;slaxejezzz -16.97%;Mercury +2.93%
+19,3,Mercury killed zweih,3v5,15.6/84.4,,Mercury +16.39%;zweih -17.39%;Zero +1.00%
+19,4,FL1T killed Zero,3v4,29.0/71.0,,FL1T +5.44%;slaxejezzz +7.94%;Zero -13.37%
+19,5,FL1T killed Mercury,3v3,55.6/44.4,,FL1T +12.85%;Jame +3.41%;zweih +10.35%;Mercury -26.61%
+19,6,JamYoung killed xiELO,2v3,30.9/69.1,,JamYoung +24.41%;Jame -7.87%;xiELO -16.86%;Mercury +0.31%
+19,7,Moseyuh killed FL1T,1v3,4.5/95.5,,Moseyuh +16.06%;FL1T -26.35%;Zero +10.29%
+19,8,JamYoung killed Jame,0v3,0.0/100.0,,JamYoung +3.91%;Jame -4.52%;Zero +0.14%;Mercury +0.46%
+20,1,Round started,5v5,50.0/50.0,PARIVISION=$25.6K (FULL);TYL=$29.85K (FULL),
+20,2,slaxejezzz killed Jee,5v4,72.2/27.8,,slaxejezzz +10.94%;Jame +9.40%;FL1T +1.84%;JamYoung -7.06%;Jee -15.13%
+20,3,slaxejezzz killed JamYoung,5v3,90.8/9.2,,slaxejezzz +17.43%;FL1T +1.22%;JamYoung -18.65%
+20,4,Mercury killed xiELO,4v3,83.0/17.0,,Mercury +6.56%;xiELO -7.81%;JamYoung +1.25%
+20,5,FL1T killed Mercury,4v2,95.0/5.0,,FL1T +7.16%;xiELO +4.87%;Mercury -12.03%
+20,6,FL1T planted the bomb,4v2,98.6/1.4,,FL1T +0.69%;Jame +0.64%;slaxejezzz +1.93%;xiELO +0.33%;JamYoung -1.75%;Jee -1.03%;Mercury -0.82%
+20,7,Bomb detonated,4v2,100.0/0.0,,Jame +0.28%;zweih +0.12%;slaxejezzz +0.61%;xiELO +0.09%;FL1T +0.29%;Moseyuh -0.69%;Zero -0.69%
+21,1,Round started,5v5,50.0/50.0,PARIVISION=$27.55K (FULL);TYL=$29.2K (FULL),
+21,2,JamYoung killed FL1T,4v5,33.0/67.0,,JamYoung +16.97%;FL1T -16.97%
+21,3,Zero killed xiELO,3v5,15.6/84.4,,Zero +17.39%;xiELO -17.39%
+21,4,JamYoung killed slaxejezzz,2v5,3.8/96.2,,JamYoung +8.73%;slaxejezzz -11.83%;Moseyuh +3.09%
+21,5,Bomb site secured,2v5,0.0/100.0,,Jame -1.89%;zweih -1.89%;Moseyuh +0.42%;Zero +1.20%;JamYoung +1.65%;Jee +0.25%;Mercury +0.25%
+22,1,Round started,5v5,50.0/50.0,PARIVISION=$25.75K (FULL);TYL=$28.85K (FULL),
+22,2,JamYoung killed FL1T,4v5,33.0/67.0,,JamYoung +13.24%;FL1T -16.97%;Moseyuh +1.10%;Mercury +2.63%
+22,3,xiELO killed Moseyuh,4v4,53.1/46.9,,xiELO +20.14%;Moseyuh -20.14%
+22,4,Jee killed slaxejezzz,3v4,35.1/64.9,,Jee +17.77%;slaxejezzz -17.99%;Zero +0.23%
+22,5,xiELO killed Jee,3v3,55.6/44.4,,xiELO +20.44%;Jee -20.44%
+22,6,Jame killed Mercury,3v2,83.5/16.5,,Jame +27.88%;Mercury -27.88%
+22,7,Zero killed xiELO,2v2,60.2/39.8,,Zero +13.90%;xiELO -23.22%;Jee +9.32%
+22,8,zweih killed Zero,2v1,82.8/17.2,,zweih +9.00%;xiELO +13.57%;Zero -22.57%
+22,9,Jame killed JamYoung,2v0,100.0/0.0,,Jame +14.89%;slaxejezzz +2.30%;JamYoung -17.19%
+22,10,zweih planted the bomb,2v0,100.0/0.0,,zweih +0.00%
+23,1,Round started,5v5,50.0/50.0,PARIVISION=$21.65K (FULL);TYL=$30.55K (FULL),
+23,2,Mercury killed FL1T,4v5,33.0/67.0,,Mercury +16.97%;FL1T -16.97%
+23,3,JamYoung killed xiELO,3v5,15.6/84.4,,JamYoung +17.39%;xiELO -17.39%
+23,4,Moseyuh killed slaxejezzz,2v5,3.8/96.2,,Moseyuh +6.03%;slaxejezzz -11.83%;JamYoung +5.79%
+23,5,zweih killed Moseyuh,2v4,8.1/91.9,,zweih +2.64%;slaxejezzz +1.68%;Moseyuh -2.94%;JamYoung -1.37%
+23,6,zweih killed JamYoung,2v3,22.9/77.1,,zweih +8.15%;xiELO +6.69%;JamYoung -14.84%
+23,7,zweih planted the bomb,2v3,38.5/61.5,,zweih +8.76%;slaxejezzz +1.36%;xiELO +5.43%;Moseyuh -2.39%;JamYoung -13.16%
+23,8,Mercury killed zweih,1v3,14.6/85.4,,Mercury +9.20%;zweih -23.89%;Moseyuh +7.65%;JamYoung +7.04%
+23,9,Jame killed Jee,1v2,19.4/80.6,,Jame +4.79%;Jee -4.79%
+23,10,Zero killed Jame,0v2,4.2/95.8,,Zero +7.71%;Jame -15.18%;JamYoung +1.54%;Jee +5.92%
+23,11,Zero defused the bomb,0v2,0.0/100.0,,Zero +1.77%;Jame -2.10%;zweih -2.10%;Moseyuh +0.34%;JamYoung +0.78%;Jee +0.15%;Mercury +1.17%
+24,1,Round started,5v5,50.0/50.0,PARIVISION=$16.5K (FULL);TYL=$30.25K (FULL),
+24,2,FL1T killed Moseyuh,5v4,72.2/27.8,,FL1T +22.19%;Moseyuh -15.13%;Mercury -7.06%
+24,3,FL1T killed Mercury,5v3,90.8/9.2,,FL1T +15.78%;Jame +2.87%;Mercury -18.65%
+24,4,Jame killed Jee,5v2,98.0/2.0,,Jame +3.14%;slaxejezzz +4.10%;Jee -7.24%
+24,5,JamYoung killed FL1T,4v2,95.4/4.6,,JamYoung +1.47%;FL1T -2.63%;Moseyuh +0.35%;Mercury +0.81%
+24,6,xiELO planted the bomb,4v2,99.1/0.9,,xiELO +0.00%;Jame +0.47%;slaxejezzz +0.32%;FL1T +2.94%;Moseyuh -1.17%;Jee -0.56%;Mercury -1.99%
+24,7,Jame killed Zero,4v1,99.9/0.1,,Jame +0.54%;zweih +0.21%;Zero -0.76%
+24,8,xiELO killed JamYoung,4v0,100.0/0.0,,xiELO +0.11%;slaxejezzz +0.01%;JamYoung -0.11%

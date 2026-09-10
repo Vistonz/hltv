@@ -1,0 +1,11 @@
+pid,nick,team,map_label,kills,won_kills,lost_kills,kprw,swing_total,swing_added,swing_given,kpr,dpr,kast,mk_rating,swing,adr,rating30
+12732,FL1T,PARIVISION,p3_inferno_pv_vs_tyloo,17,10,7,0.769,-1.32%,320.92,352.66,0.67,0.75,70.8%,0.88,-1.32%,89.6,1.01
+13776,Jame,PARIVISION,p3_inferno_pv_vs_tyloo,15,12,3,0.923,+4.77%,268.53,154.09,0.62,0.29,87.5%,0.69,+4.77%,60.7,1.23
+24807,slaxejezzz,PARIVISION,p3_inferno_pv_vs_tyloo,10,7,3,0.538,-2.48%,227.0,286.54,0.42,0.75,66.7%,1.07,-2.48%,52.6,0.77
+22471,xiELO,PARIVISION,p3_inferno_pv_vs_tyloo,15,13,2,1.0,-1.54%,263.26,300.24,0.62,0.71,66.7%,1.09,-1.54%,66.8,0.91
+23685,zweih,PARIVISION,p3_inferno_pv_vs_tyloo,17,14,3,1.077,+4.04%,355.6,258.59,0.79,0.50,83.3%,1.44,+4.04%,76.0,1.42
+19645,JamYoung,TYLOO,p3_inferno_pv_vs_tyloo,22,13,9,1.182,+4.96%,375.27,256.17,0.92,0.67,83.3%,1.01,+4.96%,100.2,1.48
+20702,Jee,TYLOO,p3_inferno_pv_vs_tyloo,13,7,6,0.636,-2.82%,286.6,354.25,0.54,0.58,75.0%,0.53,-2.82%,66.1,0.99
+20895,Mercury,TYLOO,p3_inferno_pv_vs_tyloo,16,10,6,0.909,-1.65%,265.57,305.12,0.67,0.67,79.2%,0.93,-1.65%,79.4,1.05
+21621,Moseyuh,TYLOO,p3_inferno_pv_vs_tyloo,7,3,4,0.273,-5.83%,174.54,314.36,0.29,0.71,66.7%,0.61,-5.83%,42.1,0.59
+24857,Zero,TYLOO,p3_inferno_pv_vs_tyloo,13,9,4,0.818,+0.79%,224.17,205.33,0.54,0.58,70.8%,0.75,+0.79%,53.8,0.95

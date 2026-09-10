@@ -144,6 +144,56 @@ EVP_CONFIG = {
 }
 
 # ----------------------------------------------------------------------
+# 0b. CS2 段独立配置 (两套分拆, 2026-09-09 用户指令 "拆成两套")
+# ----------------------------------------------------------------------
+# EVP_CONFIG = CS:GO 段逐字节冻结源 (42 核心参数, 永不含 CS2 机制键).
+# CS2 段 = EVP_CONFIG + CS2_OVERRIDES (cfg_for merge). CS2_OVERRIDES 可覆写任意键:
+#   机制轴权重 (CS2_<AXIS>_W) 在此; 若未来要 CS2 独立漂移, 42 核心参数也可放这里 —
+#   CS:GO 永远不 merge → 逐字节冻结保证在架构层面而非仅结构性.
+#
+# CS2 mapstats 事件级加成机制轴 (2026-09-09):
+#   - 旧 2 轴定案 (obj 161.2287→162.3726, 2026-09-09 已验证写回) 迁名:
+#     CS2_CLUTCH_W → CS2_KPRW_E_W (语义即 kprw_e), CS2_DPR_W 名保留.
+#   - 预检 v3 (score-matched 边界配对, 2026-09-09): 同 total_score 下官方入选者偏好更高
+#     kprw_e (o>n 0.628) 与更低 dpr (o>n 0.417). 当时因与 rating3 共线 0.73–0.93 排除了
+#     swing/adr/kpr/mk/kast 等轴. 2026-09-09 用户指令 "CS2 添加所有这些参数跑回归" →
+#     全候选轴机制化 (下方默认 0 的键): 每轴一个权重键, 符号由回归拟合, 不再预筛丢弃.
+#   - r30 (≡ 公式 rating 输入, corr 1.000) 不设键 (公式已直接用, 无增量).
+#   - 量纲: 事件内 z 标准化 → 权重单位 ≈ 分数. 触发: 任一非 0 轴权重 且 raw 带 CS2
+#     专属列 (CS:GO raw 结构无列 → 永不触发 → 冻结双保险).
+CS2_OVERRIDES = {
+    # --- 旧 2 轴定案迁移 (2026-09-09, 全量 obj 162.3726 已验证) ---
+    # 权重带符号: 机制引擎统一 bonus = Σ w·z(feature). 旧引擎对 dpr 是 −0.04·z(dpr)
+    # (官方偏好低 dpr), 迁移等价于 CS2_DPR_W = −0.04 (回归系数本就该带符号, 不预写死方向).
+    "CS2_KPRW_E_W": 0.19,   # kprw_e: Σwon_kills/Σrounds_won (按获胜回合加权击杀效率)
+    "CS2_DPR_W": -0.04,     # dpr: 存活控制 (官方偏好低值 → 负权重)
+    # --- 2026-09-09 新增候选轴 (全候选机制化, 默认 0 = 待回归定夺) ---
+    "CS2_KPRW_AVG_W": 0.0,  # kprw 各图简单平均 (对照 kprw_e 的回合加权口径)
+    "CS2_KPR_W": 0.0,       # kpr: 每回合击杀
+    "CS2_KAST_W": 0.0,      # kast: KAST 贡献%
+    "CS2_MK_W": 0.0,        # mk: 多杀 rating
+    "CS2_ADR_W": 0.0,       # adr: 平均每回合伤害
+    "CS2_SWING_SUM_W": 0.0, # swing 事件总和 (赛事内累积影响力)
+    "CS2_SWING_AVG_W": 0.0, # swing 每图均值 (影响力速率)
+}
+
+
+def cfg_for(segment, base=None, cs2_overrides=None):
+    """产品段配置: segment=='cs2' → base + CS2 覆写; 否则 → base (EVP_CONFIG 冻结).
+
+    cs2_overrides=None → 模块 CS2_OVERRIDES (生产默认, 复现 obj 162.3726);
+    {} → 强制机制关 (闸门基线); dict → 自定义覆写 (搜索逐点传入).
+    base=None → EVP_CONFIG (CS:GO 冻结源). 返回 dict 副本, 不污染调用方.
+    """
+    base = dict(EVP_CONFIG if base is None else base)
+    if segment == "cs2":
+        ov = CS2_OVERRIDES if cs2_overrides is None else cs2_overrides
+        if ov:
+            base.update(ov)
+    return base
+
+
+# ----------------------------------------------------------------------
 # 层1: BO 识别 (连续段分组)
 # raw 行序 = 抓取顺序 = 比赛顺序; 同一 (对手对,阶段) 连续出现的地图块 = 同一场 BO
 # ----------------------------------------------------------------------
@@ -588,6 +638,94 @@ def summarize_players(bo_scores_df, map_all, cfg, meta=None):
     s["rank"] = range(1, len(s) + 1)
     return s
 
+
+# ----------------------------------------------------------------------
+# CS2 mapstats 事件级加成 (2026-09-09 机制, 全候选轴版; 只改 CS2 排序, 见 run_experiment 注入)
+# ----------------------------------------------------------------------
+# CS2 专属列: 旧 HLTV 统计页 (CS:GO) 不提供 Swing/Rating3/KPRW → CS:GO raw 结构上无下列任
+# 一列. 用这组列做触发门槛 = CS:GO 永不触发 (全量扫描 190+ 个 CS:GO raw 无一携带, 已验证).
+_CS2_MAPSTAT_REQ = ("map_kprw", "map_won_kills", "map_kpr", "map_dpr", "map_kast",
+                    "map_mk_rating", "map_swing_total", "map_adr", "map_rating30")
+
+# 机制轴注册表: axis -> (聚合原始列, 聚合方式). 权重键 = "CS2_<AXIS>_W" (见 CS2_OVERRIDES).
+#   "kprw_e" 特殊 (Σwon_kills / Σ(won_kills/kprw)): 需 map_kprw + map_won_kills 双列;
+#   其余轴为逐图聚合 (mean 或 sum). 每轴权重带符号, 由搜索/回归定夺 — 不预写死方向.
+_CS2_AXES = {
+    "kprw_e":    ("map_kprw", "kprw_e"),
+    "kprw_avg":  ("map_kprw", "mean"),
+    "kpr":       ("map_kpr", "mean"),
+    "kast":      ("map_kast", "mean"),
+    "mk":        ("map_mk_rating", "mean"),
+    "adr":       ("map_adr", "mean"),
+    "dpr":       ("map_dpr", "mean"),
+    "swing_sum": ("map_swing_total", "sum"),
+    "swing_avg": ("map_swing_total", "mean"),
+}
+
+
+def _cs2_active_axes(cfg):
+    """读 cfg 中非 0 机制轴权重 → [(axis, weight), ...]. 全 0 → [] (逐位复现基线)."""
+    out = []
+    for axis in _CS2_AXES:
+        w = float(cfg.get(f"CS2_{axis.upper()}_W") or 0.0)
+        if w:
+            out.append((axis, w))
+    return out
+
+
+def _cs2_zscore(series):
+    """事件内 z 标准化. 常数平移不影响排序 (机制只关心选手间差异). 零方差 → 全 0."""
+    sd = series.std()
+    if not sd or sd != sd:   # None / NaN / 0
+        return series * 0.0
+    return (series - series.mean()) / sd
+
+
+def mapstats_player_adjust(raw_df, cfg):
+    """CS2 mapstats 选手加成 {player: bonus}. 无激活轴或缺 CS2 列 → {} (逐位复现基线).
+
+    聚合语义 (raw 一行/图, player 昵称与 summary 同源, 直接 dict 对齐):
+      每激活轴先聚合成选手级标量, 再事件内 z 标准化; bonus = Σ w_axis · z(axis).
+      轴缺失 (raw 无对应列 / 全 NaN) → 该轴跳过, 不阻断其余轴.
+    """
+    active = _cs2_active_axes(cfg)
+    if not active:
+        return {}
+    if not any(c in raw_df.columns for c in _CS2_MAPSTAT_REQ):
+        return {}   # 该 raw 不带任何 CS2 mapstat 列 (CS:GO 情形) → 永不触发
+    df = raw_df.dropna(subset=["player"]).copy()
+    if df.empty:
+        return {}
+    player = df["player"]
+    feats = pd.DataFrame(index=pd.Index(df["player"].unique(), name="player"))
+    for axis, _w in active:
+        base_col, agg = _CS2_AXES[axis]
+        if base_col not in df.columns:
+            continue
+        if axis == "kprw_e":
+            if "map_won_kills" not in df.columns:
+                continue
+            won_k = pd.to_numeric(df["map_won_kills"], errors="coerce")
+            kprw = pd.to_numeric(df[base_col], errors="coerce")
+            ok = won_k.notna() & (kprw > 0)
+            wsum = won_k.where(ok).groupby(player).sum()
+            rsum = (won_k.where(ok) / kprw.where(ok)).groupby(player).sum()
+            rsum = rsum.where(rsum > 0)          # 0 回合 → NaN, 除零保护
+            feats[axis] = wsum.div(rsum)         # Σwon_kills / Σ获胜回合数
+        else:
+            vals = pd.to_numeric(df[base_col], errors="coerce")
+            feats[axis] = vals.groupby(player).agg(agg if agg == "sum" else "mean")
+    feats = feats.dropna(axis=1, how="all")      # 整列 NaN (该轴无数据) → 弃轴
+    if feats.shape[1] == 0:
+        return {}
+    bonus = pd.Series(0.0, index=feats.index)
+    for axis, w in active:
+        if axis not in feats.columns:
+            continue
+        bonus = bonus + w * _cs2_zscore(feats[axis]).fillna(0.0)
+    bonus = bonus.replace([float("inf"), float("-inf")], 0.0)
+    return {p: float(b) for p, b in bonus.items() if b and b == b}
+
 # ----------------------------------------------------------------------
 # 中间产物: 每场BO每个选手的逐图给分明细
 # ----------------------------------------------------------------------
@@ -651,6 +789,16 @@ def run_experiment(raw_path, out_path, details_path, cfg=EVP_CONFIG, save=True, 
 
     # 层5 选手汇总
     summary = summarize_players(bo_all, map_all, cfg, meta=meta)
+
+    # --- CS2 mapstats 事件级加成注入 (2026-09-09; 默认全 0 或 CS:GO 无列 → 本块空转,
+    #     summary 逐位等于 summarize_players 输出, 精确复现基线) ---
+    # 机制叠加在 total_score 后重排: 不改单图/BO 层与 CS:GO 共享的已调优 caps/乘子.
+    _adj = mapstats_player_adjust(df, cfg)
+    if _adj:
+        summary["total_score"] = summary["total_score"] + summary["player"].map(_adj).fillna(0.0)
+        summary["total_score"] = summary["total_score"].round(4)
+        summary = summary.sort_values("total_score", ascending=False).reset_index(drop=True)
+        summary["rank"] = range(1, len(summary) + 1)
 
     # 中间产物: 每场BO逐图给分明细
     details = build_bo_details(map_all, bo_all, cfg)
