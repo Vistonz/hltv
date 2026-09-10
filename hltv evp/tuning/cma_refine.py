@@ -29,6 +29,9 @@ BEST_JSON = os.path.join(OUT, f"{TAG}_best.json")
 LOG_TXT = os.path.join(OUT, f"{TAG}_log.txt")
 ARCHIVE_JSONL = os.path.join(OUT, f"{TAG}_archive.jsonl")
 SPACE_JSON = os.path.join(OUT, f"{TAG}_space.json")
+# 预算控制: 默认评估数上限; EVP_REFINE_MAXSEC > 0 时改用墙钟预算 (跑够秒数就收尾写盘).
+MAX_EVALS = int(os.environ.get("EVP_REFINE_MAXEVALS", "900"))
+MAX_SEC = float(os.environ.get("EVP_REFINE_MAXSEC", "0"))
 
 PATHS = [
     "ABS_WEIGHT", "REL_WEIGHT", "ABS_SCALE", "REL_SCALE", "GAMMA_ABS", "GAMMA_REL",
@@ -156,6 +159,7 @@ def main():
                              "u": [round(float(v), 6) for v in x0], "anchor": True}) + "\n")
     print(f"精调 CMA: {len(space)} 维 × ±30% 邻域, sigma0={sigma0}, "
           f"popsize={popsize} maxiter={maxiter} seed={seed}", flush=True)
+    print(f"预算: evals<{MAX_EVALS}" + (f" 且 墙钟<{MAX_SEC:.0f}s" if MAX_SEC > 0 else ""), flush=True)
     print(f"起点 = {src} obj={start_obj:.4f}", flush=True)
 
     opts = {
@@ -181,7 +185,9 @@ def main():
         os.replace(tmp, BEST_JSON)
 
     with ProcessPoolExecutor(max_workers=max(8, popsize), initializer=_init_worker) as ex:
-        while evals < 900 and gen < maxiter * (restart_n + 1):
+        while (evals < MAX_EVALS
+               and (MAX_SEC <= 0 or time.time() - t0 < MAX_SEC)
+               and gen < maxiter * (restart_n + 1)):
             try:
                 X = es.ask()
             except ValueError as e:
