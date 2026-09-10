@@ -53,8 +53,9 @@ RANK_START_DATE = "2015-10-01"          # HLTV 战队排名起始日 (2015-10-01
 # 2023-10-16) 补抓 mapstatsid 每图 performance 地图级字段; CS:GO 赛事无 Round Swing/这些数据, 保持原样.
 CS2_START_DATE = "2023-09-27"
 # 交付物写出范围 (2026-09-10): "all"=全部赛事 (默认); "cs2"/"csgo"=只写该段赛事的
-# event_{id}_evp_summary.xlsx (另一段交付物保持冻结不覆盖); 透视表始终用全部赛事行重算.
-# 用途: 机制口径变更后只重生成 CS2 交付物 → EVP_WRITE_EVENTS=cs2
+# event_{id}_evp_summary.xlsx (另一段交付物不覆盖); 透视表始终用全部赛事行重算.
+# 用途: 机制口径变更后只重生成 CS2 交付物 → EVP_WRITE_EVENTS=cs2;
+#       CS 核参数变更 (2026-09-10 解冻后 42 核可改) → 默认 all 全段重生成.
 WRITE_EVENTS = os.environ.get("EVP_WRITE_EVENTS", "all").strip().lower()
 MVP_LIST_FILE = os.path.join(base_directory, "mvp_events.xlsx")
 
@@ -624,7 +625,7 @@ def run_step2_calculate_global_stats():
             continue
 
         print(f"\n--- (Step 2) 正在处理: {current_event_name} (新算法) ---")
-        # 两套分拆 (2026-09-10): 逐赛事按产品段取 cfg — CS:GO=冻结源原样, CS2=EVP_CONFIG+CS2_OVERRIDES.
+        # 两套分拆 (2026-09-10): 逐赛事按产品段取 cfg — CS:GO=42 核原样, CS2=EVP_CONFIG+CS2_OVERRIDES.
         # 全局 z 统计必须与生产交付口径一致 (CS2 机制-on), 否则 mean/std 会混入 mechanism-off 的总分.
         step_cfg = evp_exp.cfg_for(ev.segment_of(event_id))
         summary, _bo_all, map_all, _details = evp_exp.run_experiment(
