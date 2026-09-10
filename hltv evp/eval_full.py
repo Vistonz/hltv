@@ -16,8 +16,11 @@
       hi = 官方入选最低分, lo = 官方落选最高分,
       e_mis = max(0, line−hi) + max(0, lo−line). 全 0 = 线以上的人都入选、线以下都没入选.
 
-obj = W_in*in_topn*100 + W_ord*ordered*100 + W_mvp*mvp_ok*100 − W_MIS*line_mismatch
+obj = W_ord*ordered*100 + W_in*in_topn*100 + W_mvp*mvp_ok*100 − W_MIS*line_mismatch
       (mismatch 曾停用: 跨年代分数尺度不统一 → 改用分年代线吸收官方标准迁移, 2026-09-01 加回)
+      (2026-09-10: W_in 1.0 → 0.45 — in_topn 覆盖 255/255 场却判别力弱却占近半权重,
+       降权以让"顺序"信号主导; 0.45 使 W_in/(W_ord+W_in)=31% ≈ 用户要求的"占30%左右";
+       保留非零值维持选人约束, 见下方权重常量注释)
 """
 import json
 import os
@@ -38,7 +41,18 @@ SLUG2NICK = "/tmp/slug2nick.json"
 # 新 obj 权重 (mismatch 已停用, 见 docstring)
 # 2026-08-31 用户指令: MVP 预测正确翻倍加分 → W_MVP 0.2 → 0.4
 # 2026-08-31 晚: in_topn 权重加满 → W_IN 0.5 → 1.0
-W_ORD, W_IN, W_MVP = 1.0, 1.0, 0.4
+# 2026-09-10 用户指令: in_topn 权重过高, 稀释了顺序信号 → 降权至占"顺序相关权重"约 30%.
+#   口径 (用户原话): "比例占30%左右, 权重大概应该在0.45左右"
+#     → W_IN/(W_ORD+W_IN) = 0.45/1.45 = 31.0% (顺序 1.0 : 选人 0.45).
+#   依据: ① 各候选对照中 in_topn 几乎不动 (9 轴 +0.25pp / 机制 +0.11pp), 却占 obj 近半权重;
+#         ② 覆盖不对称 —— in_topn 255/255 场, ordered 仅 58/255 (CS:GO 17/190, CS2 41/65),
+#            两分法下 in 只做"选人"约束的配角, 不做主导;
+#         ③ 去掉它的极端口径 (W_IN=0) 下 9 轴样本外仍两折全负 (−3.40/−3.34), 说明降权不改变
+#            此前的参数/机制定案结论;
+#         ④ 不能归零: ordered 在 |d|≥3 后饱和归零且对官方人缺位不罚, 无法单独承担选人约束.
+#   EVP_W_IN 环境变量可覆盖 (调权实验用), 默认 0.45.
+W_ORD, W_MVP = 1.0, 0.4
+W_IN = float(os.environ.get("EVP_W_IN", "0.45"))
 W_MIS = 0.1   # 分年代线 mismatch 惩罚权重 (2026-09-01: 0.5→0.2→0.1, 命中主导/mismatch 弱约束)
 # ordered 距离加权 (2026-09-01 双向口径, 用户定): 每判定点 score = max(0, 1 - DIST_ALPHA·|d|)
 #   d = pos - (i+1) = 官方第 i 人在算法榜名次偏离理想位置的幅度; 提前/挤出对称惩罚.
@@ -155,10 +169,12 @@ def eval_cfg(cfg, cache, official, ordered, slug2nick, discard_ordered=None,
              cs2_overrides=None, quiet=True):
     """cache: {eid: raw_df}. 返回指标 dict.
 
-    cfg: CS:GO 段配置 (= EVP_CONFIG, 评估必须逐字节冻结). CS2 段事件改用
+    cfg: CS:GO 段配置 (= EVP_CONFIG). CS2 段事件改用
       evp_exp.cfg_for('cs2', base=cfg, cs2_overrides=cs2_overrides) — base 的 42 核心 +
       CS2 专属机制轴权重. cs2_overrides=None → 模块 CS2_OVERRIDES (生产默认);
       {} → 强制 CS2 机制关 (闸门基线); dict → 搜索逐点传入的 CS2 覆写.
+      (2026-09-10 前此参数受 "CS:GO 逐字节冻结" 约束; 用户决策「C 解冻写回」后已解除,
+       42 核参数现为两段共用 —— 见记忆 evp-final-config-20260910.)
     """
     discard_ordered = discard_ordered or set()
     in_hit = in_tot = 0
@@ -175,8 +191,8 @@ def eval_cfg(cfg, cache, official, ordered, slug2nick, discard_ordered=None,
         if not slugs:
             continue
         N = len(slugs)
-        # 两套分拆 (2026-09-09): CS2 事件用 base+CS2 覆写, CS:GO 事件永远用 cfg 原样
-        # (→ CS:GO 逐字节冻结在评估层保证, 与公式层结构性冻结双保险).
+        # 两套分拆 (2026-09-09): CS2 事件用 base+CS2 覆写, CS:GO 事件用 cfg 原样
+        # (段间隔离: CS:GO 不 merge CS2 机制轴 —— 架构层面, 与冻结策略无关).
         if segment_of(eid) == "cs2":
             use_cfg = evp_exp.cfg_for("cs2", base=cfg, cs2_overrides=cs2_overrides)
         else:

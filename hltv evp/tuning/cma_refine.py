@@ -22,7 +22,13 @@ os.chdir("/home/hongbin/Desktop/hltv/hltv evp")
 sys.path.insert(0, os.getcwd())
 import evp_experiment as evp_exp  # noqa: E402
 
-OUT = "/home/hongbin/.claude/jobs/75f6c437/tmp"
+OUT = os.environ.get("EVP_CMA_OUT", "/home/hongbin/.claude/jobs/75f6c437/tmp")
+os.makedirs(OUT, exist_ok=True)
+TAG = os.environ.get("EVP_CMA_TAG", "cma_refine")
+BEST_JSON = os.path.join(OUT, f"{TAG}_best.json")
+LOG_TXT = os.path.join(OUT, f"{TAG}_log.txt")
+ARCHIVE_JSONL = os.path.join(OUT, f"{TAG}_archive.jsonl")
+SPACE_JSON = os.path.join(OUT, f"{TAG}_space.json")
 
 PATHS = [
     "ABS_WEIGHT", "REL_WEIGHT", "ABS_SCALE", "REL_SCALE", "GAMMA_ABS", "GAMMA_REL",
@@ -51,6 +57,20 @@ def _init_worker():
     _G["cache"] = ef.load_cache(_G["official"])
     _G["slug2nick"] = ef.load_slug2nick()
     _G["discard"] = ef.DISCARD_ORDERED
+
+
+def eval_anchor(cfg):
+    """单进程评估一个配置 → 完整指标 dict (动态锚定起点 obj, 用当前 objective 口径)."""
+    import io
+    from contextlib import redirect_stdout
+    import eval_full as ef
+    official = ef.load_official()
+    ordered = ef.load_ordered()
+    cache = ef.load_cache(official)
+    slug2nick = ef.load_slug2nick()
+    with redirect_stdout(io.StringIO()):
+        return ef.eval_cfg(cfg, cache, official, ordered, slug2nick,
+                           discard_ordered=ef.DISCARD_ORDERED)
 
 
 def get_nested(cfg, path):
@@ -96,7 +116,9 @@ def eval_one(cfg):
     import eval_full as ef
     r = ef.eval_cfg(cfg, _G["cache"], _G["official"], _G["ordered"],
                     _G["slug2nick"], discard_ordered=_G["discard"])
-    return (r["obj"], r["ordered"], r["in_topn"], r["mvp_ok"], r["ord_hit"], r["ord_tot"])
+    # 分量而非仅 obj: obj 对权重线性 → 存下 (ord/in/mvp/mis) 后可在任意 W_IN 下离线重排
+    return {"obj": r["obj"], "ord": r["ordered"], "in": r["in_topn"],
+            "mvp": r["mvp_ok"], "mis": r["mismatch"]}
 
 
 def main():
@@ -109,11 +131,29 @@ def main():
     x0_cfg = copy.deepcopy(evp_exp.EVP_CONFIG)
     for p, v in base["params"].items():
         set_nested(x0_cfg, p, v)
-    start_obj = base.get("obj", float("nan"))
+    # 起点 obj 动态重算 (当前 objective 口径). 不可信 base.json 里的 obj:
+    # 那是搜索当时的权重口径, 换 W_IN 后直接沿用会让所有 Δ 失真.
+    print("评估起点配置 (动态锚定, 当前 objective 口径)...", flush=True)
+    start_info = eval_anchor(x0_cfg)
+    start_obj = start_info["obj"]
+    import eval_full as _ef
+    print(f"objective: W_IN={_ef.W_IN} (W_ORD={_ef.W_ORD} W_MVP={_ef.W_MVP} "
+          f"W_MIS={_ef.W_MIS})  输出目录={OUT} tag={TAG}", flush=True)
 
     space = build_space(x0_cfg)
     x0 = [0.5] * len(space)  # 空间以 x0 为中心 → 中心向量
     sigma0 = 0.1
+    # 档案: 本次 run 从零开始; 空间定义落盘 → u 向量可解码回参数
+    open(ARCHIVE_JSONL, "w").close()
+    with open(SPACE_JSON, "w") as f:
+        json.dump({"win": _ef.W_IN, "w_ord": _ef.W_ORD, "w_mvp": _ef.W_MVP,
+                   "w_mis": _ef.W_MIS, "out": OUT, "tag": TAG, "src": src,
+                   "space": [[p, lo, hi] for p, lo, hi in space],
+                   "x0u": [float(v) for v in x0]}, f, indent=1)
+    with open(ARCHIVE_JSONL, "a") as af:
+        af.write(json.dumps({"ord": start_info["ordered"], "in": start_info["in_topn"],
+                             "mvp": start_info["mvp_ok"], "mis": start_info["mismatch"],
+                             "u": [round(float(v), 6) for v in x0], "anchor": True}) + "\n")
     print(f"精调 CMA: {len(space)} 维 × ±30% 邻域, sigma0={sigma0}, "
           f"popsize={popsize} maxiter={maxiter} seed={seed}", flush=True)
     print(f"起点 = {src} obj={start_obj:.4f}", flush=True)
@@ -134,11 +174,11 @@ def main():
         if best_cfg is None:
             return
         params = {p: get_nested(best_cfg, p) for p, lo, hi in space}
-        tmp = f"{OUT}/cma_refine_best.json.tmp"
+        tmp = BEST_JSON + ".tmp"
         with open(tmp, "w") as f:
             json.dump({"obj": best_obj, "delta": best_obj - start_obj,
                        "evals": evals, "gen": gen, "params": params}, f, indent=1)
-        os.replace(tmp, f"{OUT}/cma_refine_best.json")
+        os.replace(tmp, BEST_JSON)
 
     with ProcessPoolExecutor(max_workers=max(8, popsize), initializer=_init_worker) as ex:
         while evals < 900 and gen < maxiter * (restart_n + 1):
@@ -152,18 +192,23 @@ def main():
                 continue
             cfgs = [unit_to_cfg(x, space) for x in X]
             results = list(ex.map(eval_one, cfgs))
-            fitness = [-r[0] for r in results]
+            fitness = [-r["obj"] for r in results]
             es.tell(X, fitness)
             evals += len(X)
             gen += 1
+            with open(ARCHIVE_JSONL, "a") as af:
+                for x, r in zip(X, results):
+                    af.write(json.dumps({
+                        "ord": r["ord"], "in": r["in"], "mvp": r["mvp"], "mis": r["mis"],
+                        "u": [round(float(v), 6) for v in x]}) + "\n")
             for x, r in zip(X, results):
-                if r[0] > best_obj:
-                    best_obj = r[0]
+                if r["obj"] > best_obj:
+                    best_obj = r["obj"]
                     best_cfg = copy.deepcopy(unit_to_cfg(x, space))
                     best_info = r
                     save_best()
             line = (f"[gen{gen}] evals={evals} {time.time()-t0:.0f}s "
-                    f"gen_best={max(r[0] for r in results):.3f} all_best={best_obj:.3f}")
+                    f"gen_best={max(r['obj'] for r in results):.3f} all_best={best_obj:.3f}")
             print(line, flush=True)
             log.append(line)
             if es.stop():
@@ -185,14 +230,14 @@ def main():
             v = get_nested(best_cfg, p)
             if abs(v / cur - 1.0) > 0.01:
                 print(f"  {p:<28} {v:>10.5f}  (x{v/cur:.4f})")
-    with open(f"{OUT}/cma_refine_best.json", "w") as f:
+    with open(BEST_JSON, "w") as f:
         params = {} if best_cfg is None else {
             p: get_nested(best_cfg, p) for p, lo, hi in space}
         json.dump({"obj": best_obj, "delta": best_obj - start_obj,
                    "evals": evals, "gen": gen, "params": params}, f, indent=1)
-    with open(f"{OUT}/cma_refine_log.txt", "w") as f:
+    with open(LOG_TXT, "w") as f:
         f.write("\n".join(log) + "\n")
-    print("→ 已写入 cma_refine_best.json / cma_refine_log.txt")
+    print(f"→ 已写入 {BEST_JSON} / {LOG_TXT}")
 
 
 if __name__ == "__main__":

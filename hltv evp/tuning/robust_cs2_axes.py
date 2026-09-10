@@ -49,12 +49,18 @@ def _to_real(u):
     return LO + u * (HI - LO)
 
 
+def _score(r):
+    """目标口径: 直接用 eval_full 的 obj (其权重由 EVP_W_IN 等环境变量控制;
+    2026-09-10 起 W_IN 默认 0.45). 拟合与评估必须同一口径, 本函数只做取值不另算."""
+    return r["obj"]
+
+
 def eval_one(uvec):
     import eval_full as _ef
     ov = {f"CS2_{ax}_W": _to_real(float(u)) for ax, u in zip(AXES, uvec)}
     r = _ef.eval_cfg(evp_exp.EVP_CONFIG, _G["cache_cs2"], _G["official"], _G["ordered"],
                      _G["slug2nick"], discard_ordered=_G["discard"], cs2_overrides=ov)
-    return r["obj"]
+    return _score(r)
 
 
 def fit(subset, x0u, seed, maxiter, popsize):
@@ -91,7 +97,7 @@ def obj_of(subset, ov):
     with redirect_stdout(io.StringIO()):
         r = _ef.eval_cfg(evp_exp.EVP_CONFIG, cache_sub, official, ordered, slug2nick,
                          discard_ordered=_ef.DISCARD_ORDERED, cs2_overrides=ov)
-    return r["obj"]
+    return _score(r)
 
 
 def main():
@@ -108,6 +114,7 @@ def main():
     A = {eid for i, eid in enumerate(cs2) if i % 2 == 0}
     B = {eid for i, eid in enumerate(cs2) if i % 2 == 1}
     print(f"CS2 评估事件 {len(cs2)} → 折A {len(A)} / 折B {len(B)}", flush=True)
+    print(f"目标口径: obj (W_IN={os.environ.get('EVP_W_IN', '0.3 默认')})", flush=True)
 
     x0 = [LO + (HI - LO) * (0.5 + 0.0) for _ in AXES]
     # 生产权重 → 单位坐标
